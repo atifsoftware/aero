@@ -64,3 +64,4 @@ tmp/
 *.sw?
 .DS_Store
 Thumbs.db
+NodeFlow-React.code-workspace
