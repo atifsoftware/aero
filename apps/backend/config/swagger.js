@@ -86,7 +86,7 @@ Bearer <YOUR_ACCESS_TOKEN>
     }
   },
   apis: [
-    path.join(__dirname, '../app/controllers/*.js'),
+    path.join(__dirname, '../controllers/*.js'),
     path.join(__dirname, '../routes/*.js')
   ]
 };

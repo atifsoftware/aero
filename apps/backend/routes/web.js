@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const HomeController = require('../app/controllers/HomeController');
-const AuthController = require('../app/controllers/AuthController');
-const UserController = require('../app/controllers/UserController');
-const SettingController = require('../app/controllers/SettingController');
-const { auth, guest, can } = require('../app/middlewares/auth');
+const HomeController = require('../controllers/HomeController');
+const AuthController = require('../controllers/AuthController');
+const UserController = require('../controllers/UserController');
+const SettingController = require('../controllers/SettingController');
+const { auth, guest, can } = require('../middlewares/auth');
 
 // Public routes
 router.get('/', HomeController.index);

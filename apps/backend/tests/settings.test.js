@@ -1,4 +1,4 @@
-const TestRunner = require('../app/core/testRunner');
+const TestRunner = require('../core/testRunner');
 const DB = require('../config/db');
 
 TestRunner.register('Settings DB Persistence & Cache Integrity', async (assert) => {

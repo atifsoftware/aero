@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const apiTokenAuth = require('../app/middlewares/apiTokenAuth');
-const apiCan = require('../app/middlewares/apiCan');
-const ApiAuthController = require('../app/controllers/ApiAuthController');
-const ApiUserController = require('../app/controllers/ApiUserController');
-const ShopController = require('../app/controllers/ShopController');
-const DashboardController = require('../app/controllers/DashboardController');
-const VoucherController = require('../app/controllers/VoucherController');
-const CustomerController = require('../app/controllers/CustomerController');
-const SupplierController = require('../app/controllers/SupplierController');
-const DailySheetController = require('../app/controllers/DailySheetController');
-const EmployeeController = require('../app/controllers/EmployeeController');
-const TransferController = require('../app/controllers/TransferController');
-const CashbookController = require('../app/controllers/CashbookController');
-const AttendanceController = require('../app/controllers/AttendanceController');
-const ReportController = require('../app/controllers/ReportController');
-const TemplateController = require('../app/controllers/TemplateController');
+const apiTokenAuth = require('../middlewares/apiTokenAuth');
+const apiCan = require('../middlewares/apiCan');
+const ApiAuthController = require('../controllers/ApiAuthController');
+const ApiUserController = require('../controllers/ApiUserController');
+const ShopController = require('../controllers/ShopController');
+const DashboardController = require('../controllers/DashboardController');
+const VoucherController = require('../controllers/VoucherController');
+const CustomerController = require('../controllers/CustomerController');
+const SupplierController = require('../controllers/SupplierController');
+const DailySheetController = require('../controllers/DailySheetController');
+const EmployeeController = require('../controllers/EmployeeController');
+const TransferController = require('../controllers/TransferController');
+const CashbookController = require('../controllers/CashbookController');
+const AttendanceController = require('../controllers/AttendanceController');
+const ReportController = require('../controllers/ReportController');
+const TemplateController = require('../controllers/TemplateController');
 
 /**
  * @swagger
@@ -314,7 +314,7 @@ router.put('/templates/:id', apiTokenAuth, TemplateController.update);
 router.delete('/templates/:id', apiTokenAuth, TemplateController.destroy);
 
 // AI Intelligence APIs
-const AiController = require('../app/controllers/AiController');
+const AiController = require('../controllers/AiController');
 router.post('/ai/ask', apiTokenAuth, AiController.ask);
 router.post('/ai/summarize', apiTokenAuth, AiController.summarize);
 

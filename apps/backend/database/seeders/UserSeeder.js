@@ -1,4 +1,4 @@
-const User = require('../../app/models/User');
+const User = require('../../models/User');
 
 /**
  * User Seeder

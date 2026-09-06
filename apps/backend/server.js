@@ -31,13 +31,13 @@ app.use(compression()); // Compress responses with Gzip
 const PORT = process.env.PORT || 3000;
 
 // Initialize global RequestContext middleware (VERY FIRST HOOK)
-const requestContext = require('./app/core/RequestContext');
+const requestContext = require('./core/RequestContext');
 app.use((req, res, next) => {
   requestContext.run({ req, res }, next);
 });
 
 // Initialize Unified API Response Decorator (res.success, res.error, res.paginate)
-const apiResponse = require('./app/middlewares/apiResponse');
+const apiResponse = require('./middlewares/apiResponse');
 app.use(apiResponse);
 
 // Request logger middleware
@@ -47,7 +47,7 @@ app.use((req, res, next) => {
 });
 
 // Load Global Helpers (PHP-like global functions)
-require('./app/core/helpers');
+require('./core/helpers');
 
 // Initialize Session File Store directory setup
 const sessionStore = new FileStore({
@@ -57,7 +57,7 @@ const sessionStore = new FileStore({
 });
 
 // Configure EJS view engine
-app.set('views', path.join(__dirname, 'app', 'views'));
+app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 // Standard middlewares & Security Headers (Helmet)
@@ -98,15 +98,15 @@ app.use(session({
 }));
 
 // Import global middlewares
-const { shareUser } = require('./app/middlewares/auth');
+const { shareUser } = require('./middlewares/auth');
 app.use(shareUser);
 
 // Mount flash session middleware
-const flashMiddleware = require('./app/middlewares/flashMiddleware');
+const flashMiddleware = require('./middlewares/flashMiddleware');
 app.use(flashMiddleware);
 
 // Register Custom CSRF Security guard (after session parser)
-const csrf = require('./app/middlewares/csrf');
+const csrf = require('./middlewares/csrf');
 app.use(csrf);
 
 // Load Site Settings and make them globally accessible in all EJS views (In-Memory Cached)
@@ -205,14 +205,14 @@ app.use((req, res, next) => {
 });
 
 // 500 server error handler (Intelligent Error Suggestion system)
-app.use(require('./app/middlewares/errorHandler'));
+app.use(require('./middlewares/errorHandler'));
 
 // Start the server
 const http = require('http');
 const server = http.createServer(app);
 
 // Initialize Socket.io WebSockets broadcast layer
-const Socket = require('./app/core/Socket');
+const Socket = require('./core/Socket');
 Socket.init(server);
 
 server.listen(PORT, '0.0.0.0', () => {

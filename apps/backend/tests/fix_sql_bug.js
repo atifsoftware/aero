@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const controllersDir = path.join(__dirname, '../app/controllers');
+const controllersDir = path.join(__dirname, '../controllers');
 
 const files = [
   'VoucherController.js',

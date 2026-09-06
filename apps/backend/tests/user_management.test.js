@@ -1,5 +1,5 @@
-const TestRunner = require('../app/core/testRunner');
-const User = require('../app/models/User');
+const TestRunner = require('../core/testRunner');
+const User = require('../models/User');
 const DB = require('../config/db');
 
 TestRunner.register('User Management ORM CRUD Integrity', async (assert) => {

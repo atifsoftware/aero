@@ -1,7 +1,7 @@
-const TestRunner = require('../app/core/testRunner');
-const Cache = require('../app/core/Cache');
-const Queue = require('../app/core/Queue');
-const Validator = require('../app/core/Validator');
+const TestRunner = require('../core/testRunner');
+const Cache = require('../core/Cache');
+const Queue = require('../core/Queue');
+const Validator = require('../core/Validator');
 const DB = require('../config/db');
 
 // Test 1: QueryBuilder enhancements
@@ -102,7 +102,7 @@ TestRunner.register('Queue broker push and stats', async (assert) => {
 
 // Test 5: ApiResponse decorator & pagination structure
 TestRunner.register('ApiResponse decorator and pagination format', async (assert) => {
-  const apiResponse = require('../app/middlewares/apiResponse');
+  const apiResponse = require('../middlewares/apiResponse');
 
   let responseData = null;
   let statusCode = 200;

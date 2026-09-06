@@ -1,7 +1,7 @@
-const TestRunner = require('../app/core/testRunner');
-const User = require('../app/models/User');
+const TestRunner = require('../core/testRunner');
+const User = require('../models/User');
 const DB = require('../config/db');
-const HasApiTokens = require('../app/core/HasApiTokens');
+const HasApiTokens = require('../core/HasApiTokens');
 
 TestRunner.register('API Status, Settings, and Token Authentication Workflow', async (assert) => {
   // 1. Verify /api/settings fetch

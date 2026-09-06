@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const DB = require('./config/db');
-const User = require('./app/models/User');
-const Cache = require('./app/core/Cache');
+const User = require('./models/User');
+const Cache = require('./core/Cache');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -251,7 +251,7 @@ function promptGenerateModel() {
     }
 
     try {
-      const targetDir = path.join(__dirname, 'app', 'models');
+      const targetDir = path.join(__dirname, 'models');
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
       }
@@ -284,7 +284,7 @@ module.exports = ${modelName};
 `;
 
       fs.writeFileSync(filePath, template, 'utf8');
-      console.log(colors.green + `✓ Model scaffold created at: app/models/${modelName}.js` + colors.reset);
+      console.log(colors.green + `✓ Model scaffold created at: models/${modelName}.js` + colors.reset);
       console.log(colors.cyan + `  Table: ${tableName}` + colors.reset);
       console.log(colors.cyan + `  Extends: Model (ORM Base Class)` + colors.reset);
 
@@ -305,7 +305,7 @@ function promptGenerateController() {
     }
 
     try {
-      const targetDir = path.join(__dirname, 'app', 'controllers');
+      const targetDir = path.join(__dirname, 'controllers');
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
       }
@@ -346,7 +346,7 @@ module.exports = ${controllerName};
 `;
 
       fs.writeFileSync(filePath, template, 'utf8');
-      console.log(colors.green + `✓ Controller scaffold created at: app/controllers/${controllerName}.js` + colors.reset);
+      console.log(colors.green + `✓ Controller scaffold created at: controllers/${controllerName}.js` + colors.reset);
 
     } catch (error) {
       console.log(colors.red + "✗ Scaffold failed: " + error.message + colors.reset);
@@ -439,7 +439,7 @@ async function cacheClear() {
 async function viewFailedJobs() {
   console.log(colors.yellow + "\nFetching failed background jobs..." + colors.reset);
   try {
-    const Queue = require('./app/core/Queue');
+    const Queue = require('./core/Queue');
     const failed = await Queue.getFailed();
     if (failed.length === 0) {
       console.log(colors.green + "✓ No failed jobs found. Queue is clean!" + colors.reset);
@@ -472,7 +472,7 @@ function promptRetryFailedJob() {
       return;
     }
     try {
-      const Queue = require('./app/core/Queue');
+      const Queue = require('./core/Queue');
       const retried = await Queue.retry(jobId);
       if (retried) {
         console.log(colors.green + `✓ Failed job #${jobId} pushed back into active queue.` + colors.reset);
@@ -495,7 +495,7 @@ function promptGenerateMiddleware() {
       return;
     }
     try {
-      const targetDir = path.join(__dirname, 'app', 'middlewares');
+      const targetDir = path.join(__dirname, 'middlewares');
       if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
       const filePath = path.join(targetDir, `${mwName}.js`);
       if (fs.existsSync(filePath)) throw new Error(`Middleware ${mwName}.js already exists!`);
@@ -509,7 +509,7 @@ module.exports = function ${mwName}(req, res, next) {
 };
 `;
       fs.writeFileSync(filePath, template, 'utf8');
-      console.log(colors.green + `✓ Middleware scaffold created at: app/middlewares/${mwName}.js` + colors.reset);
+      console.log(colors.green + `✓ Middleware scaffold created at: middlewares/${mwName}.js` + colors.reset);
     } catch (error) {
       console.log(colors.red + "✗ Scaffold failed: " + error.message + colors.reset);
     }
@@ -526,7 +526,7 @@ function promptGenerateJob() {
       return;
     }
     try {
-      const targetDir = path.join(__dirname, 'app', 'jobs');
+      const targetDir = path.join(__dirname, 'jobs');
       if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
       const filePath = path.join(targetDir, `${jobName}.js`);
       if (fs.existsSync(filePath)) throw new Error(`Job ${jobName}.js already exists!`);
@@ -559,7 +559,7 @@ class ${jobName} extends Job {
 module.exports = ${jobName};
 `;
       fs.writeFileSync(filePath, template, 'utf8');
-      console.log(colors.green + `✓ Job scaffold created at: app/jobs/${jobName}.js` + colors.reset);
+      console.log(colors.green + `✓ Job scaffold created at: jobs/${jobName}.js` + colors.reset);
     } catch (error) {
       console.log(colors.red + "✗ Scaffold failed: " + error.message + colors.reset);
     }
@@ -644,7 +644,7 @@ async function appStatus() {
 async function runMigrations() {
   console.log(colors.yellow + "\nRunning database migrations..." + colors.reset);
   try {
-    const Migrator = require('./app/core/Migrator');
+    const Migrator = require('./core/Migrator');
     const migrator = new Migrator();
     const ran = await migrator.run();
     if (ran.length === 0) {
@@ -731,7 +731,7 @@ function resolveClassName(migrationName) {
 async function launchQueueWorker() {
   console.log(colors.yellow + "\nLaunching Background Queue Worker..." + colors.reset);
   try {
-    const QueueWorker = require('./app/core/QueueWorker');
+    const QueueWorker = require('./core/QueueWorker');
     const worker = new QueueWorker();
     await worker.work();
   } catch (error) {
@@ -744,7 +744,7 @@ async function launchTinker() {
   console.log(colors.magenta + "\nBooting NodeFlow Interactive Tinker REPL..." + colors.reset);
   console.log(colors.white + "Pre-loaded Core Services: DB, Cache, Logger, Flash, ApiResource, Queue, HasApiTokens" + colors.reset);
   
-  const modelsDir = path.join(__dirname, 'app', 'models');
+  const modelsDir = path.join(__dirname, 'models');
   let loadedModelsCount = 0;
   
   rl.close();
@@ -756,12 +756,12 @@ async function launchTinker() {
 
   // Pre-load core services
   r.context.DB = require('./config/db');
-  r.context.Cache = require('./app/core/Cache');
-  r.context.Logger = require('./app/core/Logger');
-  r.context.Flash = require('./app/core/Flash');
-  r.context.ApiResource = require('./app/core/ApiResource');
-  r.context.Queue = require('./app/core/Queue');
-  r.context.HasApiTokens = require('./app/core/HasApiTokens');
+  r.context.Cache = require('./core/Cache');
+  r.context.Logger = require('./core/Logger');
+  r.context.Flash = require('./core/Flash');
+  r.context.ApiResource = require('./core/ApiResource');
+  r.context.Queue = require('./core/Queue');
+  r.context.HasApiTokens = require('./core/HasApiTokens');
 
   // Pre-load models
   if (fs.existsSync(modelsDir)) {
@@ -788,7 +788,7 @@ async function launchTinker() {
 
 async function runAutomatedTests() {
   try {
-    const TestRunner = require('./app/core/testRunner');
+    const TestRunner = require('./core/testRunner');
     await TestRunner.runAll();
   } catch (error) {
     console.log(colors.red + "✗ Testing failed: " + error.message + colors.reset);

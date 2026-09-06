@@ -6,7 +6,7 @@ let _logger = null;
 function getLogger() {
   if (!_logger) {
     try {
-      _logger = require('../app/core/Logger');
+      _logger = require('../core/Logger');
     } catch {
       _logger = null;
     }
