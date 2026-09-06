@@ -1,7 +1,7 @@
 const DB = require('../config/db');
 
 /**
- * Enterprise Queue Manager for NodeFlow
+ * Enterprise Queue Manager for Aero
  * Interfaces MySQL as a robust, persistent background task broker.
  */
 class Queue {

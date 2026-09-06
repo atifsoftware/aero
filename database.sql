@@ -1,4 +1,4 @@
--- NodeFlow Framework Database Schema
+-- Aero MVC Framework Database Schema
 -- Version 1.0.0
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -92,8 +92,8 @@ CREATE TABLE `settings` (
 -- Seeds for table `settings`
 -- --------------------------------------------------------
 INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES
-('name', 'NodeFlow Framework'),
-('short_name', 'NodeFlow'),
+('name', 'Aero MVC Framework'),
+('short_name', 'Aero'),
 ('logo', ''),
 ('favicon', '');
 

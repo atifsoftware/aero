@@ -23,7 +23,7 @@ class SettingController {
       });
 
       res.render('admin/settings', {
-        title: 'সাইট সেটিংস — NodeFlow Admin',
+        title: 'সাইট সেটিংস — Aero Admin',
         settings,
         user: req.session.user
       });

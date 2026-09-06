@@ -165,21 +165,21 @@ TestRunner.register('Notifications - Multi-Channel Dispatcher (Notification Bus)
     toMail(notifiable) {
       return {
         to: notifiable.email,
-        subject: 'Welcome to NodeFlow',
+        subject: 'Welcome to Aero',
         text: `Hello ${notifiable.name}, welcome aboard!`
       };
     }
     toSms(notifiable) {
       return {
         to: notifiable.phone,
-        message: `Hi ${notifiable.name}, welcome to NodeFlow!`
+        message: `Hi ${notifiable.name}, welcome to Aero!`
       };
     }
   }
 
   const user = {
     name: 'Atif',
-    email: 'atif@nodeflow.local',
+    email: 'atif@aeromvc.dev',
     phone: '+8801700000000'
   };
 

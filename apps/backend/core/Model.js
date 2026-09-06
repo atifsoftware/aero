@@ -1,7 +1,7 @@
 const DB = require('../config/db');
 
 /**
- * Custom Thenable Relation Class for NodeFlow Eager Loading
+ * Custom Thenable Relation Class for Aero Eager Loading
  * Exposes metadata about relations while maintaining backwards compatibility by acting as a Promise.
  */
 class Relation {
@@ -39,7 +39,7 @@ class Relation {
 }
 
 /**
- * NodeFlow Base Model Class
+ * Aero Base Model Class
  * ORM-like Active Record pattern inspired by NovaFlow PHP Model.
  * Enhanced with Eager Loading (N+1 query solution) and Soft Deletes.
  */

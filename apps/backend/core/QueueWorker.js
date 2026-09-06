@@ -4,7 +4,7 @@ const Queue = require('./Queue');
 const Job = require('./Job');
 
 /**
- * QueueWorker for NodeFlow
+ * QueueWorker for Aero
  * Asynchronously processes queued tasks from the database broker, modeled after NovaFlow.
  */
 class QueueWorker {
@@ -27,7 +27,7 @@ class QueueWorker {
    * Launch continuous polling work loop
    */
   async work(queue = 'default') {
-    console.log(this.color(`\n🚀 NodeFlow Queue Worker started. Watching queue: [${queue}]`, 'cyan'));
+    console.log(this.color(`\n🚀 Aero Queue Worker started. Watching queue: [${queue}]`, 'cyan'));
     console.log(this.color(`⌨️  Press Ctrl+C to stop.\n`, 'yellow'));
 
     while (this.shouldKeepWorking) {
@@ -74,7 +74,7 @@ class QueueWorker {
       jobInstance = new JobClass(payload.data);
 
       if (!(jobInstance instanceof Job)) {
-        throw new Error(`Job class must extend NodeFlow's base Job core class.`);
+        throw new Error(`Job class must extend Aero's base Job core class.`);
       }
 
       // Execute job handler

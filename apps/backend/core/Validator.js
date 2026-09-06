@@ -1,7 +1,7 @@
 const DB = require('../config/db');
 
 /**
- * NodeFlow Request Validator
+ * Aero Request Validator
  * Comprehensive input validation engine inspired by NovaFlow PHP Validator.
  */
 class Validator {

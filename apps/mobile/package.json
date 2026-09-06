@@ -1,5 +1,5 @@
 {
-  "name": "@nodeflow/mobile",
+  "name": "@aero/mobile",
   "version": "1.0.0",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
@@ -10,7 +10,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@nodeflow/shared": "*",
+    "@aero/shared": "*",
     "expo": "~51.0.0",
     "expo-status-bar": "~1.12.1",
     "react": "^18.3.1",

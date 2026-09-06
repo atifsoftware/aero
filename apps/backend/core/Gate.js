@@ -1,7 +1,7 @@
 const requestContext = require('./RequestContext');
 
 /**
- * Gate Authorization Registry for NodeFlow
+ * Gate Authorization Registry for Aero
  * Allows defining fine-grained user permissions, modeled after NovaFlow.
  * Automatically resolves the logged-in user from the RequestContext.
  */

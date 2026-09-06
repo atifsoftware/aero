@@ -1,5 +1,5 @@
 /**
- * Flash Session Middleware for NodeFlow
+ * Flash Session Middleware for Aero
  * Automatically maps session flash variables to template locals and deletes them.
  */
 function flashMiddleware(req, res, next) {

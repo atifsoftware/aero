@@ -9,7 +9,7 @@ class AuthController {
    */
   static async showLogin(req, res) {
     res.render('auth/login', {
-      title: 'লগইন — NodeFlow Framework'
+      title: 'লগইন — Aero MVC Framework'
     });
   }
 

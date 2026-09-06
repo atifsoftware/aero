@@ -14,7 +14,7 @@ module.exports = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'nodeflow_jwt_secret_key_123456789');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'aero_jwt_secret_key_123456789');
     req.user = decoded; // Attach user payload to request
     next();
   } catch (error) {

@@ -1,7 +1,7 @@
 const Model = require('./Model');
 
 /**
- * API Resource for NodeFlow
+ * API Resource for Aero
  * Transforms database models and collections consistently for API responses, modeled after NovaFlow.
  */
 class ApiResource {

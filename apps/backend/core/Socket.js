@@ -1,5 +1,5 @@
 /**
- * Socket Broadcasting Manager for NodeFlow
+ * Socket Broadcasting Manager for Aero
  * Integrates Socket.io for real-time WebSocket events.
  */
 class Socket {

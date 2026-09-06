@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev:backend",
+    "dev": "npm run dev:all",
     "dev:backend": "npm --prefix apps/backend run dev",
     "dev:web": "next dev apps/web -p 3000",
     "dev:mobile": "npm --prefix apps/mobile run start",

@@ -57,7 +57,7 @@ export default function App() {
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <Text style={styles.logoBadge}>⚡</Text>
-          <Text style={styles.headerTitle}>NodeFlow Mobile</Text>
+          <Text style={styles.headerTitle}>Aero Mobile</Text>
         </View>
         <Text style={styles.statusBadge}>● {apiStatus}</Text>
       </View>
@@ -70,7 +70,7 @@ export default function App() {
               <Text style={styles.cardTag}>MULTI-PLATFORM STACK</Text>
               <Text style={styles.cardTitle}>Mobile App Connected</Text>
               <Text style={styles.cardDesc}>
-                React Native (Expo) client communicating directly with NodeFlow Express 4 MVC Backend.
+                React Native (Expo) client communicating directly with Aero Express 4 MVC Backend.
               </Text>
             </View>
 
@@ -132,7 +132,7 @@ export default function App() {
 
               <TextInput
                 style={styles.input}
-                placeholder="Ask NodeFlow AI..."
+                placeholder="Ask Aero AI..."
                 placeholderTextColor="#6b7280"
                 value={prompt}
                 onChangeText={setPrompt}

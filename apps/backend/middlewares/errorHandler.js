@@ -197,7 +197,7 @@ module.exports = (err, req, res, next) => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>NodeFlow Debugger — Error Caught</title>
+      <title>Aero Debugger — Error Caught</title>
       <style>
         body { background: #0f172a; color: #f8fafc; font-family: monospace; padding: 40px; margin: 0; line-height: 1.6; }
         .error-container { max-width: 1000px; margin: 0 auto; background: rgba(30, 41, 59, 0.7); border: 2px solid #ef4444; border-radius: 12px; padding: 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
@@ -244,7 +244,7 @@ module.exports = (err, req, res, next) => {
 
         ${(possibleCauses.length > 0 || autoFix) ? `
           <div class="suggestions-box">
-            <h3 class="suggestions-title">💡 NodeFlow Intelligent Suggestions:</h3>
+            <h3 class="suggestions-title">💡 Aero Intelligent Suggestions:</h3>
             <ul class="suggestions-list">
               ${autoFix ? `<li style="color: #f43f5e; font-weight: bold; margin-bottom: 10px; list-style-type: '🚀 '">${escapeHtml(autoFix.suggestion)}</li>` : ''}
               ${possibleCauses.map(cause => `<li>${escapeHtml(cause)}</li>`).join('')}

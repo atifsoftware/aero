@@ -1,7 +1,7 @@
 const requestContext = require('./RequestContext');
 
 /**
- * Flash Message Handler for NodeFlow
+ * Flash Message Handler for Aero
  * Provides a clean interface for session-based messaging, modeled after NovaFlow.
  */
 class Flash {

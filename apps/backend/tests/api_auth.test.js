@@ -9,7 +9,7 @@ TestRunner.register('API Status, Settings, and Token Authentication Workflow', a
   assert.ok(cachedSettings, 'Settings map should exist.');
 
   // 2. Simulate Login and issuing token
-  const adminEmail = 'admin@nodeflow.com';
+  const adminEmail = 'admin@aeromvc.dev';
   let adminUser = await User.findByEmail(adminEmail);
   if (!adminUser) {
     adminUser = await User.query().first();

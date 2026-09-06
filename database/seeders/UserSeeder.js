@@ -7,9 +7,9 @@ const User = require('../../app/models/User');
 class UserSeeder {
   static async run() {
     const users = [
-      { name: 'System Administrator', email: 'admin@nodeflow.com', password: 'admin123', role: 'admin', status: 1 },
-      { name: 'Developer User', email: 'developer@nodeflow.com', password: 'developer123', role: 'staff', status: 1 },
-      { name: 'Guest User', email: 'guest@nodeflow.com', password: 'guest123', role: 'staff', status: 1 },
+      { name: 'System Administrator', email: 'admin@aeromvc.dev', password: 'admin123', role: 'admin', status: 1 },
+      { name: 'Developer User', email: 'developer@aeromvc.dev', password: 'developer123', role: 'staff', status: 1 },
+      { name: 'Guest User', email: 'guest@aeromvc.dev', password: 'guest123', role: 'staff', status: 1 },
     ];
 
     let inserted = 0;

@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Swagger & OpenAPI 3.0 Explorer',
-  description: 'Interactive, auto-generated OpenAPI 3.0 documentation and real-time API tester for NodeFlow Enterprise REST APIs.',
+  description: 'Interactive, auto-generated OpenAPI 3.0 documentation and real-time API tester for Aero MVC REST APIs.',
 };
 
 export default function ApiDocsPage() {
@@ -91,7 +91,7 @@ export default function ApiDocsPage() {
       }}>
         <iframe
           src="http://localhost:3001/api/docs"
-          title="NodeFlow Swagger UI"
+          title="Aero Swagger UI"
           style={{
             width: '100%',
             height: '100%',

@@ -88,8 +88,9 @@ node cli.js 2   # Seed initial sample data
 ```bash
 npm run dev
 ```
-- Web Application: `http://localhost:3001/`
-- API Explorer: `http://localhost:3001/api/docs`
+- Web Application (Next.js 14): `http://localhost:3000/`
+- API Backend (Express 5 MVC): `http://localhost:3001/`
+- API Explorer (Swagger Docs): `http://localhost:3001/api/docs`
 
 ---
 

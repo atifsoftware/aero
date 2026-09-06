@@ -1,5 +1,5 @@
 /**
- * Pagination Helper for NodeFlow
+ * Pagination Helper for Aero
  * Computes offset, boundaries, and outputs beautiful Bootstrap 5 pagination HTML.
  */
 class Pagination {

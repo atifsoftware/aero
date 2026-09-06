@@ -88,7 +88,7 @@ app.use(fileUpload());
 // Set up express-session with FileStore
 app.use(session({
   store: sessionStore,
-  secret: process.env.SESSION_SECRET || 'nodeflow_default_secret_key_123',
+  secret: process.env.SESSION_SECRET || 'aero_default_secret_key_123',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -117,8 +117,8 @@ async function reloadSettingsCache() {
   try {
     const tables = await DB.query("SHOW TABLES LIKE 'settings'");
     let settingsMap = {
-      name: 'NodeFlow Framework',
-      short_name: 'NodeFlow',
+      name: 'Aero MVC Framework',
+      short_name: 'Aero',
       logo: '',
       favicon: ''
     };
@@ -135,8 +135,8 @@ async function reloadSettingsCache() {
     console.error('Failed to reload settings cache:', err);
     if (!settingsCache) {
       settingsCache = {
-        name: 'NodeFlow Framework',
-        short_name: 'NodeFlow',
+        name: 'Aero MVC Framework',
+        short_name: 'Aero',
         logo: '',
         favicon: ''
       };
@@ -179,22 +179,8 @@ app.get(['/api/docs.json', '/api/docs-json', '/api/openapi.json'], (req, res) =>
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
 
-// Serve React Client (Single Port Unified SPA)
-const clientDistPath = path.join(__dirname, 'client', 'dist');
-if (fs.existsSync(clientDistPath)) {
-  app.use(express.static(clientDistPath));
-
-  // SPA fallback for all non-API web routes
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
-      return next();
-    }
-    res.sendFile(path.join(clientDistPath, 'index.html'));
-  });
-} else {
-  // If React client is not built yet, fallback to legacy EJS web routes
-  app.use('/', webRoutes);
-}
+// Serve EJS MVC Web Views
+app.use('/', webRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
@@ -217,7 +203,7 @@ Socket.init(server);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`================================================`);
-  console.log(`🚀 NodeFlow Server is running at http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Aero Server is running at http://0.0.0.0:${PORT}`);
   console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`================================================`);
 });

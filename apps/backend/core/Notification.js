@@ -18,7 +18,7 @@ const Queue = require('./Queue');
  */
 
 /**
- * Enterprise Notification Engine for NodeFlow
+ * Enterprise Notification Engine for Aero
  * Dispatches notifications across multiple channels (Mail, SMS, Database)
  * with sync and async queue support.
  */

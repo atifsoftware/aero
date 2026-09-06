@@ -1,5 +1,5 @@
 /**
- * Base Abstract Job Class for NodeFlow
+ * Base Abstract Job Class for Aero
  * All queued jobs must extend this class, modeled after NovaFlow.
  */
 class Job {

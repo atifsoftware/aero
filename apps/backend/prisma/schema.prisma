@@ -1,4 +1,4 @@
-// NodeFlow Enterprise Prisma Schema
+// Aero Enterprise Prisma Schema
 // Prisma ORM Layer - Coexists with Custom Fluent Query Builder (config/db.js)
 
 datasource db {

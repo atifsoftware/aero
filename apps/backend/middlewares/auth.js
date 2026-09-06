@@ -1,5 +1,5 @@
 /**
- * Authentication Middleware for NodeFlow
+ * Authentication Middleware for Aero
  */
 module.exports = {
   // Protect routes that require login
@@ -29,7 +29,7 @@ module.exports = {
   // Share session information with all templates globally
   shareUser: (req, res, next) => {
     res.locals.user = req.session?.user || null;
-    res.locals.appName = process.env.APP_NAME || 'NodeFlow';
+    res.locals.appName = process.env.APP_NAME || 'Aero';
     res.locals.currentPath = req.path;
     next();
   },

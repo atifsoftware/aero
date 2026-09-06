@@ -160,7 +160,7 @@ async function dbSetup() {
       password: process.env.DB_PASS || ''
     });
     
-    const dbName = process.env.DB_NAME || 'nodeflow_db';
+    const dbName = process.env.DB_NAME || 'aero_db';
     await tempConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     await tempConnection.end();
     console.log(colors.green + `✓ Database '${dbName}' created or verified successfully.` + colors.reset);
@@ -185,7 +185,7 @@ async function dbSetup() {
     
     console.log(colors.green + "✓ Tables initialized successfully." + colors.reset);
 
-    const adminEmail = 'admin@nodeflow.com';
+    const adminEmail = 'admin@aeromvc.dev';
     const existing = await User.findByEmail(adminEmail);
     
     if (!existing) {
@@ -197,7 +197,7 @@ async function dbSetup() {
         status: 1
       });
       console.log(colors.green + `✓ Default Admin user seeded:` + colors.reset);
-      console.log(colors.white + `  Email:    admin@nodeflow.com` + colors.reset);
+      console.log(colors.white + `  Email:    admin@aeromvc.dev` + colors.reset);
       console.log(colors.white + `  Password: admin123` + colors.reset);
     } else {
       await User.query().where('email', adminEmail).update({ status: 1 });
@@ -216,9 +216,9 @@ async function dbSeed() {
   console.log(colors.yellow + "\nSeeding database with sample users..." + colors.reset);
   try {
     const users = [
-      { name: 'System Administrator', email: 'admin@nodeflow.com', password: 'admin123', role: 'admin', status: 1 },
-      { name: 'Developer User', email: 'developer@nodeflow.com', password: 'developer123', role: 'staff', status: 1 },
-      { name: 'Guest User', email: 'guest@nodeflow.com', password: 'guest123', role: 'staff', status: 1 }
+      { name: 'System Administrator', email: 'admin@aeromvc.dev', password: 'admin123', role: 'admin', status: 1 },
+      { name: 'Developer User', email: 'developer@aeromvc.dev', password: 'developer123', role: 'staff', status: 1 },
+      { name: 'Guest User', email: 'guest@aeromvc.dev', password: 'guest123', role: 'staff', status: 1 }
     ];
 
     let inserted = 0;
@@ -242,7 +242,7 @@ async function viewTables() {
   console.log(colors.yellow + "\nDatabase Tables:" + colors.reset);
   try {
     const rows = await DB.query("SHOW TABLES");
-    const dbNameKey = `Tables_in_${process.env.DB_NAME || 'nodeflow_db'}`;
+    const dbNameKey = `Tables_in_${process.env.DB_NAME || 'aero_db'}`;
     
     if (rows.length === 0) {
       console.log("No tables found inside database.");
@@ -590,7 +590,7 @@ async function appStatus() {
   try {
     // Database Status
     const tables = await DB.query("SHOW TABLES");
-    const dbName = process.env.DB_NAME || 'nodeflow_db';
+    const dbName = process.env.DB_NAME || 'aero_db';
     console.log(colors.bold + "\n📦 Database:" + colors.reset);
     console.log(`   Name:   ${dbName}`);
     console.log(`   Tables: ${tables.length}`);
@@ -770,7 +770,7 @@ async function launchQueueWorker() {
 }
 
 async function launchTinker() {
-  console.log(colors.magenta + "\nBooting NodeFlow Interactive Tinker REPL..." + colors.reset);
+  console.log(colors.magenta + "\nBooting Aero Interactive Tinker REPL..." + colors.reset);
   console.log(colors.white + "Pre-loaded Core Services: DB (QueryBuilder), prisma (PrismaClient), Cache, Logger, Flash, ApiResource, Queue, HasApiTokens" + colors.reset);
   
   const modelsDir = path.join(__dirname, 'models');
@@ -779,7 +779,7 @@ async function launchTinker() {
   rl.close();
   
   const r = require('repl').start({
-    prompt: colors.bold + colors.magenta + 'nodeflow > ' + colors.reset,
+    prompt: colors.bold + colors.magenta + 'aero > ' + colors.reset,
     useGlobal: true
   });
 

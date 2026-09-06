@@ -28,21 +28,21 @@ TestRunner.register('Settings DB Persistence & Cache Integrity', async (assert) 
   };
 
   // Test updates
-  await updateSetting('name', 'Test NodeFlow Pro');
+  await updateSetting('name', 'Test Aero Pro');
   await updateSetting('short_name', 'TestNFPro');
-  await updateSetting('email', 'test@nodeflow.com');
+  await updateSetting('email', 'test@aeromvc.dev');
   await updateSetting('mobile', '01700000000');
   await updateSetting('address', 'Test Address, City');
 
   // Assertions
   const nameRow = await DB.table('settings').where('setting_key', 'name').first();
-  assert.strictEqual(nameRow.setting_value, 'Test NodeFlow Pro', 'Name setting value matches.');
+  assert.strictEqual(nameRow.setting_value, 'Test Aero Pro', 'Name setting value matches.');
 
   const shortNameRow = await DB.table('settings').where('setting_key', 'short_name').first();
   assert.strictEqual(shortNameRow.setting_value, 'TestNFPro', 'Short Name setting value matches.');
 
   const emailRow = await DB.table('settings').where('setting_key', 'email').first();
-  assert.strictEqual(emailRow.setting_value, 'test@nodeflow.com', 'Email setting value matches.');
+  assert.strictEqual(emailRow.setting_value, 'test@aeromvc.dev', 'Email setting value matches.');
 
   const mobileRow = await DB.table('settings').where('setting_key', 'mobile').first();
   assert.strictEqual(mobileRow.setting_value, '01700000000', 'Mobile setting value matches.');

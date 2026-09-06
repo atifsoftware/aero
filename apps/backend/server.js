@@ -17,9 +17,9 @@ dotenv.config();
 if (process.env.NODE_ENV === 'production') {
   const INSECURE_DEFAULTS = [
     ['SESSION_SECRET', 'aero_default_secret_key_123'],
-    ['SESSION_SECRET', 'nodeflow_default_secret_key_123'],
+    ['SESSION_SECRET', 'aero_default_secret_key_123'],
     ['JWT_SECRET', 'aero_jwt_secret_key_change_me'],
-    ['JWT_SECRET', 'nodeflow_jwt_secret_key_change_me']
+    ['JWT_SECRET', 'aero_jwt_secret_key_change_me']
   ];
   INSECURE_DEFAULTS.forEach(([key, defaultVal]) => {
     if (!process.env[key] || process.env[key] === defaultVal) {
@@ -113,7 +113,7 @@ app.use(fileUpload());
 // Set up express-session with FileStore
 app.use(session({
   store: sessionStore,
-  secret: process.env.SESSION_SECRET || 'nodeflow_default_secret_key_123',
+  secret: process.env.SESSION_SECRET || 'aero_default_secret_key_123',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -193,8 +193,8 @@ const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
 
 // Load Swagger API Documentation
-const { swaggerUi, swaggerSpec, swaggerCustomOptions } = require('./config/swagger');
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerCustomOptions));
+const { swaggerUi, swaggerSpec } = require('./config/swagger');
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get(['/api/docs.json', '/api/docs-json', '/api/openapi.json'], (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
@@ -204,22 +204,8 @@ app.get(['/api/docs.json', '/api/docs-json', '/api/openapi.json'], (req, res) =>
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
 
-// Serve React Client (Single Port Unified SPA)
-const clientDistPath = path.join(__dirname, 'client', 'dist');
-if (fs.existsSync(clientDistPath)) {
-  app.use(express.static(clientDistPath));
-
-  // SPA fallback for all non-API web routes
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
-      return next();
-    }
-    res.sendFile(path.join(clientDistPath, 'index.html'));
-  });
-} else {
-  // If React client is not built yet, fallback to legacy EJS web routes
-  app.use('/', webRoutes);
-}
+// Serve EJS MVC Web Views on Port 3001
+app.use('/', webRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

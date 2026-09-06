@@ -35,7 +35,7 @@ const router = express.Router();
  *                       example: Admin
  *                     email:
  *                       type: string
- *                       example: admin@nodeflow.com
+ *                       example: admin@aeromvc.dev
  *                     role:
  *                       type: string
  *                       example: admin
@@ -68,7 +68,7 @@ router.get('/me', ApiAuthController.me);
  *               email:
  *                 type: string
  *                 format: email
- *                 example: admin@nodeflow.com
+ *                 example: admin@aeromvc.dev
  *               password:
  *                 type: string
  *                 format: password
@@ -98,7 +98,7 @@ router.get('/me', ApiAuthController.me);
  *                       example: Admin
  *                     email:
  *                       type: string
- *                       example: admin@nodeflow.com
+ *                       example: admin@aeromvc.dev
  *                     role:
  *                       type: string
  *                       example: admin

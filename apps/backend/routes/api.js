@@ -72,6 +72,40 @@ router.get('/settings', (req, res) => {
 });
 
 /**
+ * POST /api/settings
+ * Update settings in database
+ */
+router.post('/settings', async (req, res, next) => {
+  try {
+    const DB = require('../config/db');
+    const fields = req.body || {};
+
+    for (const [key, val] of Object.entries(fields)) {
+      if (val !== undefined && typeof val !== 'object') {
+        const strVal = String(val);
+        const existing = await DB.table('settings').where('setting_key', key).first();
+        if (existing) {
+          await DB.table('settings').where('setting_key', key).update({ setting_value: strVal });
+        } else {
+          await DB.table('settings').insert({ setting_key: key, setting_value: strVal });
+        }
+      }
+    }
+
+    if (global.flushSettingsCache) {
+      await global.flushSettingsCache();
+    }
+
+    res.json({
+      status: 'success',
+      message: 'সেটিংস সফলভাবে আপডেট করা হয়েছে।'
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/dashboard/framework-stats
  * Diagnostics and framework stats for React Admin Dashboard
  */
@@ -175,7 +209,7 @@ router.get('/auth/tokens', apiTokenAuth, ApiAuthController.listTokens);
  *                       example: Admin
  *                     email:
  *                       type: string
- *                       example: admin@nodeflow.com
+ *                       example: admin@aeromvc.dev
  *                     role:
  *                       type: string
  *                       example: admin

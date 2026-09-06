@@ -12,7 +12,7 @@ const crypto = require('crypto');
  */
 
 /**
- * Personal Access Token Manager for NodeFlow
+ * Personal Access Token Manager for Aero
  * Models Laravel Sanctum / OmniFlow PAT token workflows with strict expiration,
  * refresh lifecycle, and auto schema migration.
  */

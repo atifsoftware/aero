@@ -15,7 +15,7 @@ global.Sms = require('./Sms');
 global.Notification = require('./Notification');
 
 /**
- * NodeFlow Global Helper Functions
+ * Aero Global Helper Functions
  * Attaches convenient utility functions to the global scope, modeled after NovaFlow.
  */
 
@@ -48,7 +48,7 @@ global.dd = function(...vars) {
       <div style="background: #18171B; color: #FFF; padding: 25px; border-radius: 12px; margin: 20px; font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; overflow: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
         <h4 style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.15); padding-bottom:10px; color:#0ea5e9; display:flex; align-items:center; gap:8px;">
           <span style="background:#0ea5e9; color:#18171b; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold;">DD</span>
-          NodeFlow Dump & Die
+          Aero Dump & Die
         </h4>
     `;
 

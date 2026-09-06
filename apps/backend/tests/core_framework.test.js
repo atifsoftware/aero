@@ -27,7 +27,7 @@ TestRunner.register('QueryBuilder SQL compilation & methods', async (assert) => 
 
 // Test 2: Hybrid Cache operations
 TestRunner.register('Hybrid Cache (Set, Get, Has, Remember, Forget)', async (assert) => {
-  const testKey = `test_nodeflow_${Date.now()}`;
+  const testKey = `test_aero_${Date.now()}`;
   const testVal = { id: 101, role: 'admin', active: true };
 
   // Set & Get
@@ -71,7 +71,7 @@ TestRunner.register('Validator engine (sync & async validation)', async (assert)
 
   const validData = {
     name: 'Tanvir Hossain',
-    email: 'tanvir@nodeflow.org',
+    email: 'tanvir@aeromvc.dev',
     age: 28
   };
 

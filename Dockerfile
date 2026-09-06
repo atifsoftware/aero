@@ -25,5 +25,5 @@ EXPOSE 3000
 # Set environment
 ENV NODE_ENV=production
 
-# Run the NodeFlow server
+# Run the Aero server
 CMD ["node", "server.js"]

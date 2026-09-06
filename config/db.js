@@ -27,7 +27,7 @@ function resolveDbConfig() {
         port: parseInt(parsedUrl.port) || 3306,
         user: decodeURIComponent(parsedUrl.username || 'root'),
         password: decodeURIComponent(parsedUrl.password || ''),
-        database: (parsedUrl.pathname || '').replace(/^\//, '') || 'nodeflow_db',
+        database: (parsedUrl.pathname || '').replace(/^\//, '') || 'aero_db',
       };
     } catch (e) {
       console.warn('[DB] Failed to parse DATABASE_URL, falling back to discrete DB_* env vars.');
@@ -39,7 +39,7 @@ function resolveDbConfig() {
     port: parseInt(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASS || '',
-    database: process.env.DB_NAME || 'nodeflow_db',
+    database: process.env.DB_NAME || 'aero_db',
   };
 }
 
@@ -106,7 +106,7 @@ function auditQueryPerformance(sql, params, durationMs) {
 }
 
 /**
- * Fluent Query Builder Class for NodeFlow
+ * Fluent Query Builder Class for Aero
  */
 class QueryBuilder {
   constructor(table, connection = null) {

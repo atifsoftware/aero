@@ -98,7 +98,7 @@ class Gemini {
    * @returns {Promise<string>}
    */
   async askAssistant(question, context = {}) {
-    const systemPrompt = `You are NodeFlow AI, an intelligent ERP and business operations assistant. 
+    const systemPrompt = `You are Aero AI, an intelligent ERP and business operations assistant. 
 Help the user analyze their data, understand financial summaries, and troubleshoot system queries in a polite, helpful, and concise manner. Provide responses in Bengali if asked in Bengali, or English otherwise.`;
 
     const contextStr = typeof context === 'string' ? context : JSON.stringify(context, null, 2);

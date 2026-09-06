@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 
 /**
- * NodeFlow Prisma Client Singleton
+ * Aero Prisma Client Singleton
  * Co-exists seamlessly with Custom Fluent Query Builder (config/db.js).
  */
 const prisma = new PrismaClient({

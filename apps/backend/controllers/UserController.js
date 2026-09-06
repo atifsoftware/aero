@@ -55,7 +55,7 @@ class UserController {
         .get();
 
       res.render('admin/users/index', {
-        title: 'ব্যবহারকারী ব্যবস্থাপনা — NodeFlow Admin',
+        title: 'ব্যবহারকারী ব্যবস্থাপনা — Aero Admin',
         users,
         paginationHtml: pagination.render(),
         stats,

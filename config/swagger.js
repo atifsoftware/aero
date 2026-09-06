@@ -2,42 +2,26 @@ const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 
-// Base OpenAPI 3.0 Definition
+// Metadata options for OpenAPI spec (Aero Core / FastAPI modeled)
 const baseOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'NodeFlow Enterprise API Explorer',
+      title: 'Aero MVC Core API Docs',
       version: '1.0.0',
-      description: `
-### 🚀 Welcome to the NodeFlow Enterprise API Portal
-This API documentation is **automatically generated** from the Express 4 MVC router stack and synchronized with manual OpenAPI annotations.
-
-#### 🔑 Authentication
-Protected endpoints require a **Bearer Token** (Personal Access Token or JWT).
-Click the **Authorize 🔓** button below and enter:
-\`\`\`text
-Bearer <YOUR_ACCESS_TOKEN>
-\`\`\`
-*(Tip: In NodeFlow, you can obtain a token via \`POST /api/login\` or by running \`node cli.js\`)*
-      `,
+      description: 'Interactive RESTful API Explorer for Aero, modeled after FastAPI docs. Test endpoints in real-time by authorizing with a JWT or Personal Access Token.',
       contact: {
-        name: 'NodeFlow Engineering Team',
-        url: 'http://localhost:3000',
-      },
-      license: {
-        name: 'MIT',
-        url: 'https://opensource.org/licenses/MIT',
+        name: 'Aero Core Team'
       }
     },
     servers: [
       {
         url: process.env.APP_URL || `http://localhost:${process.env.PORT || 3001}`,
-        description: 'Active NodeFlow Backend Server'
+        description: 'Active Backend API Server'
       },
       {
         url: 'http://localhost:3000',
-        description: 'Next.js 14 Reverse Proxy (:3000/api)'
+        description: 'Next.js Frontend Proxy (:3000/api)'
       }
     ],
     components: {
@@ -45,8 +29,8 @@ Bearer <YOUR_ACCESS_TOKEN>
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'Token / JWT',
-          description: 'Enter your Personal Access Token or JWT to access protected endpoints.'
+          bearerFormat: 'JWT/Token',
+          description: 'Input your Bearer JWT token or personal access token to authorize protected API endpoints.'
         }
       },
       schemas: {
@@ -85,9 +69,16 @@ Bearer <YOUR_ACCESS_TOKEN>
       }
     }
   },
+  // Files to scan for JSDoc documentation comments
   apis: [
-    path.join(__dirname, '../app/controllers/*.js'),
-    path.join(__dirname, '../routes/*.js')
+    path.join(__dirname, '../apps/backend/controllers/*.js'),
+    path.join(__dirname, '../apps/backend/routes/*.js'),
+    path.join(__dirname, '../controllers/*.js'),
+    path.join(__dirname, '../routes/*.js'),
+    './apps/backend/controllers/*.js',
+    './apps/backend/routes/*.js',
+    './controllers/*.js',
+    './routes/*.js'
   ]
 };
 
@@ -99,51 +90,51 @@ try {
   console.warn('[Swagger] Warning compiling JSDoc:', e.message);
 }
 
-// 2. Intelligent Auto-Route Categorizer and Schema Builder
+// 2. Intelligent Auto-Route Categorizer
 function categorizeRoute(pathStr) {
   if (pathStr.includes('/auth') || pathStr === '/api/login') {
-    return { tag: '🔐 Authentication & Access', priority: 1 };
+    return { tag: 'Authentication', priority: 1 };
   }
   if (pathStr.includes('/user')) {
-    return { tag: '👤 User Management', priority: 2 };
+    return { tag: 'Users', priority: 2 };
   }
   if (pathStr.includes('/dashboard')) {
-    return { tag: '📊 Dashboard & Analytics', priority: 3 };
+    return { tag: 'Dashboard', priority: 3 };
   }
   if (pathStr.includes('/expense') || pathStr.includes('/income') || pathStr.includes('/categories') || pathStr.includes('/accounts')) {
-    return { tag: '🧾 Vouchers & Accounts', priority: 4 };
+    return { tag: 'Vouchers & Accounts', priority: 4 };
   }
   if (pathStr.includes('/customer')) {
-    return { tag: '👥 Customer Tally Khata', priority: 5 };
+    return { tag: 'Customer Khata', priority: 5 };
   }
   if (pathStr.includes('/supplier')) {
-    return { tag: '🏢 Supplier Mahajon Khata', priority: 6 };
+    return { tag: 'Supplier Khata', priority: 6 };
   }
   if (pathStr.includes('/daily-sheet')) {
-    return { tag: '📅 Daily Sheets & Khata', priority: 7 };
+    return { tag: 'Daily Sheets', priority: 7 };
   }
   if (pathStr.includes('/employee') || pathStr.includes('/salar') || pathStr.includes('/advance')) {
-    return { tag: '👔 HR & Payroll', priority: 8 };
+    return { tag: 'HR & Payroll', priority: 8 };
   }
   if (pathStr.includes('/attendance')) {
-    return { tag: '⏱️ Attendance System', priority: 9 };
+    return { tag: 'Attendance', priority: 9 };
   }
   if (pathStr.includes('/transfer') || pathStr.includes('/daily-closing') || pathStr.includes('/cashbook')) {
-    return { tag: '🏦 Cashbook & Closings', priority: 10 };
+    return { tag: 'Cashbook & Closings', priority: 10 };
   }
   if (pathStr.includes('/report')) {
-    return { tag: '📈 Financial Reports', priority: 11 };
+    return { tag: 'Reports', priority: 11 };
   }
   if (pathStr.includes('/shop')) {
-    return { tag: '🏪 Shop Management', priority: 12 };
+    return { tag: 'Shop Management', priority: 12 };
   }
   if (pathStr.includes('/template') || pathStr.includes('/setting')) {
-    return { tag: '⚙️ Settings & Templates', priority: 13 };
+    return { tag: 'Settings & Templates', priority: 13 };
   }
   if (pathStr.includes('/ai/')) {
-    return { tag: '🤖 Google Gemini AI', priority: 14 };
+    return { tag: 'Gemini AI', priority: 14 };
   }
-  return { tag: '⚡ System & Health', priority: 15 };
+  return { tag: 'System & Health', priority: 15 };
 }
 
 function generateSummary(method, pathStr) {
@@ -291,7 +282,7 @@ function getSamplePayload(pathStr) {
       properties: {
         name: { type: 'string', example: 'Manager User' },
         username: { type: 'string', example: 'manager1' },
-        email: { type: 'string', example: 'manager@nodeflow.com' },
+        email: { type: 'string', example: 'manager@aeromvc.dev' },
         password: { type: 'string', example: 'secret123' },
         role: { type: 'string', enum: ['admin', 'manager', 'staff'], example: 'manager' }
       }
@@ -310,9 +301,25 @@ function getSamplePayload(pathStr) {
 function generateAutoSwaggerSpec() {
   const mergedPaths = { ...manualSpec.paths };
 
+  let apiRouter, authRouter;
+  try {
+    apiRouter = require('./apps/backend/routes/api');
+  } catch (e) {
+    try { apiRouter = require('../apps/backend/routes/api'); } catch (err) {
+      try { apiRouter = require('./routes/api'); } catch (e2) {}
+    }
+  }
+  try {
+    authRouter = require('./apps/backend/routes/auth');
+  } catch (e) {
+    try { authRouter = require('../apps/backend/routes/auth'); } catch (err) {
+      try { authRouter = require('./routes/auth'); } catch (e2) {}
+    }
+  }
+
   const routersToScan = [
-    { prefix: '/api', router: require('../routes/api') },
-    { prefix: '/api/auth', router: require('../routes/auth') }
+    { prefix: '/api', router: apiRouter },
+    { prefix: '/api/auth', router: authRouter }
   ];
 
   routersToScan.forEach(({ prefix, router }) => {
@@ -334,7 +341,6 @@ function generateAutoSwaggerSpec() {
       }
 
       methods.forEach(method => {
-        // If developer already defined manual JSDoc on this method/path, preserve it!
         if (mergedPaths[openApiPath][method]) {
           return;
         }
@@ -342,7 +348,6 @@ function generateAutoSwaggerSpec() {
         const { tag } = categorizeRoute(openApiPath);
         const summary = generateSummary(method, openApiPath);
 
-        // Path parameters extraction
         const pathParams = [];
         const paramMatches = rawFullPath.match(/:([a-zA-Z0-9_]+)/g) || [];
         paramMatches.forEach(p => {
@@ -358,7 +363,6 @@ function generateAutoSwaggerSpec() {
           });
         });
 
-        // Query parameters for GET endpoints
         const queryParams = [];
         if (method.toUpperCase() === 'GET') {
           if (!openApiPath.includes('{id}')) {
@@ -378,7 +382,7 @@ function generateAutoSwaggerSpec() {
 
         const operation = {
           summary,
-          description: `${summary}. Processed dynamically by NodeFlow MVC Core with query builder speed.`,
+          description: `${summary}.`,
           tags: [tag],
           parameters: [...pathParams, ...queryParams],
           responses: {
@@ -404,7 +408,7 @@ function generateAutoSwaggerSpec() {
               }
             } : {}),
             '422': {
-              description: 'Validation Error (Unprocessable Entity)',
+              description: 'Validation Error',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -449,155 +453,8 @@ function generateAutoSwaggerSpec() {
 
 const swaggerSpec = generateAutoSwaggerSpec();
 
-// Sleek Custom Dark Cyber Theme CSS for Swagger UI
-const customCss = `
-  body {
-    background-color: #0a0e17 !important;
-    color: #e2e8f0 !important;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-  }
-  .swagger-ui {
-    background-color: #0a0e17 !important;
-  }
-  .swagger-ui .topbar {
-    background-color: #0f172a !important;
-    border-bottom: 1px solid #1e293b !important;
-    padding: 12px 0 !important;
-  }
-  .swagger-ui .topbar .download-url-wrapper {
-    display: none !important;
-  }
-  .swagger-ui .topbar-wrapper img {
-    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E");
-    width: 28px !important;
-    height: 28px !important;
-  }
-  .swagger-ui .info {
-    margin: 30px 0 !important;
-  }
-  .swagger-ui .info .title {
-    color: #38bdf8 !important;
-    font-weight: 800 !important;
-    letter-spacing: -0.5px !important;
-  }
-  .swagger-ui .info p, .swagger-ui .info li {
-    color: #94a3b8 !important;
-  }
-  .swagger-ui .scheme-container {
-    background-color: #0f172a !important;
-    border: 1px solid #1e293b !important;
-    border-radius: 10px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
-    margin: 20px 0 !important;
-    padding: 15px 20px !important;
-  }
-  .swagger-ui .opblock-tag {
-    color: #f1f5f9 !important;
-    border-bottom: 1px solid #1e293b !important;
-    font-size: 1.15rem !important;
-    font-weight: 700 !important;
-    padding: 14px 0 !important;
-  }
-  .swagger-ui .opblock {
-    border-radius: 8px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-    margin-bottom: 12px !important;
-    border: 1px solid #1e293b !important;
-    background: #0f172a !important;
-  }
-  .swagger-ui .opblock .opblock-summary-path {
-    color: #f8fafc !important;
-    font-weight: 600 !important;
-  }
-  .swagger-ui .opblock .opblock-summary-description {
-    color: #94a3b8 !important;
-  }
-  .swagger-ui .opblock.opblock-get {
-    border-color: rgba(16, 185, 129, 0.3) !important;
-    background: rgba(16, 185, 129, 0.04) !important;
-  }
-  .swagger-ui .opblock.opblock-get .opblock-summary-method {
-    background: #10b981 !important;
-  }
-  .swagger-ui .opblock.opblock-post {
-    border-color: rgba(56, 189, 248, 0.3) !important;
-    background: rgba(56, 189, 248, 0.04) !important;
-  }
-  .swagger-ui .opblock.opblock-post .opblock-summary-method {
-    background: #0284c7 !important;
-  }
-  .swagger-ui .opblock.opblock-put {
-    border-color: rgba(245, 158, 11, 0.3) !important;
-    background: rgba(245, 158, 11, 0.04) !important;
-  }
-  .swagger-ui .opblock.opblock-put .opblock-summary-method {
-    background: #d97706 !important;
-  }
-  .swagger-ui .opblock.opblock-delete {
-    border-color: rgba(239, 68, 68, 0.3) !important;
-    background: rgba(239, 68, 68, 0.04) !important;
-  }
-  .swagger-ui .opblock.opblock-delete .opblock-summary-method {
-    background: #dc2626 !important;
-  }
-  .swagger-ui .btn.authorize {
-    background: linear-gradient(135deg, #0284c7, #0369a1) !important;
-    color: #ffffff !important;
-    border-color: transparent !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-  }
-  .swagger-ui .btn.authorize svg {
-    fill: #ffffff !important;
-  }
-  .swagger-ui .btn.execute {
-    background: #0284c7 !important;
-    border-color: transparent !important;
-    color: #ffffff !important;
-    border-radius: 6px !important;
-  }
-  .swagger-ui select, .swagger-ui input[type=text] {
-    background: #1e293b !important;
-    color: #f8fafc !important;
-    border: 1px solid #334155 !important;
-    border-radius: 6px !important;
-  }
-  .swagger-ui .model-box, .swagger-ui section.models {
-    background-color: #0f172a !important;
-    border: 1px solid #1e293b !important;
-    border-radius: 8px !important;
-  }
-  .swagger-ui .model-title {
-    color: #38bdf8 !important;
-  }
-  .swagger-ui table thead tr th, .swagger-ui table thead tr td {
-    color: #cbd5e1 !important;
-    border-color: #1e293b !important;
-  }
-  .swagger-ui .parameter__name, .swagger-ui .parameter__type {
-    color: #cbd5e1 !important;
-  }
-  .swagger-ui .response-col_status {
-    color: #38bdf8 !important;
-  }
-`;
-
-const swaggerCustomOptions = {
-  customCss,
-  customSiteTitle: 'NodeFlow Enterprise API Explorer',
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayRequestDuration: true,
-    filter: true,
-    tryItOutEnabled: true,
-    docExpansion: 'list',
-    defaultModelsExpandDepth: 1
-  }
-};
-
 module.exports = {
   swaggerUi,
   swaggerSpec,
-  swaggerCustomOptions,
   generateAutoSwaggerSpec
 };

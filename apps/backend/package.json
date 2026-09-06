@@ -14,7 +14,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
-    "@nodeflow/shared": "*",
+    "@aero/shared": "*",
     "@prisma/client": "^5.14.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",

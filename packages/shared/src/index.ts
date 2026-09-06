@@ -1,5 +1,5 @@
 /**
- * NodeFlow Shared Contracts, Constants & Types
+ * Aero Shared Contracts, Constants & Types
  * Single source of truth across Backend, Web (Next.js), and Mobile (React Native Expo).
  */
 
@@ -53,7 +53,7 @@ export const APP_CONFIG = {
   DEFAULT_WEB_PORT: 3000,
   DEFAULT_MOBILE_PORT: 8081,
   DEFAULT_PAGE_SIZE: 15,
-  APP_NAME: 'NodeFlow Framework',
+  APP_NAME: 'Aero MVC Framework',
 } as const;
 
 export interface ApiResponse<T = any> {

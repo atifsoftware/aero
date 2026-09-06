@@ -3,7 +3,7 @@ const path = require('path');
 const DB = require('../config/db');
 
 /**
- * Migrator Engine for NodeFlow
+ * Migrator Engine for Aero
  * Manages database schema migrations, modeled after NovaFlow.
  */
 class Migrator {

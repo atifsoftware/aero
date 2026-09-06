@@ -3,7 +3,7 @@ const User = require('../models/User');
 const DB = require('../config/db');
 
 TestRunner.register('User Management ORM CRUD Integrity', async (assert) => {
-  const testEmail = 'staff-test@nodeflow.com';
+  const testEmail = 'staff-test@aeromvc.dev';
 
   // Clean existing test user if any
   const existing = await User.findByEmail(testEmail);
