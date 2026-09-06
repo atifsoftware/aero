@@ -2,7 +2,7 @@
   "name": "nodeflow-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "NodeFlow - Enterprise Express 4 MVC & Next.js 14 Full-Stack Monorepo",
+  "description": "NodeFlow - Enterprise Express 5 MVC & Next.js 14 Full-Stack Monorepo",
   "workspaces": [
     "apps/*",
     "packages/*"
