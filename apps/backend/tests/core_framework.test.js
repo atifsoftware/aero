@@ -144,3 +144,17 @@ TestRunner.register('ApiResponse decorator and pagination format', async (assert
   assert.strictEqual(responseData.data.length, 2);
   assert.strictEqual(responseData.pagination.total, 50);
 });
+
+// Test 6: Prisma Client Initialization & Model Reflection
+TestRunner.register('Prisma Client singleton & schema models reflection', async (assert) => {
+  const prisma = require('../config/prisma');
+  assert.ok(prisma, 'Prisma singleton should be instantiated');
+  assert.ok(typeof prisma.user?.findMany === 'function', 'Prisma should expose User model');
+  assert.ok(typeof prisma.voucher?.findMany === 'function', 'Prisma should expose Voucher model');
+  assert.ok(typeof prisma.account?.findMany === 'function', 'Prisma should expose Account model');
+  assert.ok(typeof prisma.customer?.findMany === 'function', 'Prisma should expose Customer model');
+  assert.ok(typeof prisma.supplier?.findMany === 'function', 'Prisma should expose Supplier model');
+  assert.ok(typeof prisma.employee?.findMany === 'function', 'Prisma should expose Employee model');
+  assert.ok(typeof prisma.$queryRaw === 'function', 'Prisma should expose $queryRaw');
+});
+

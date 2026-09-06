@@ -51,6 +51,9 @@ function showMenu() {
   console.log("16. " + colors.yellow + "Retry Failed Queue Job (queue:retry)" + colors.reset);
   console.log("17. " + colors.blue + "Generate Middleware Scaffold (make:middleware)" + colors.reset);
   console.log("18. " + colors.blue + "Generate Background Job Scaffold (make:job)" + colors.reset);
+  console.log("19. " + colors.cyan + "Launch Prisma Studio Web GUI (prisma:studio)" + colors.reset);
+  console.log("20. " + colors.cyan + "Regenerate Prisma Client (prisma:generate)" + colors.reset);
+  console.log("21. " + colors.cyan + "Push Prisma Schema to Database (prisma:db:push)" + colors.reset);
   console.log("0. " + colors.red + "Exit" + colors.reset);
   console.log("");
   
@@ -115,6 +118,15 @@ async function handleChoice(choice) {
     case '18':
       promptGenerateJob();
       return;
+    case '19':
+      await launchPrismaStudio();
+      break;
+    case '20':
+      await generatePrismaClient();
+      break;
+    case '21':
+      await pushPrismaSchema();
+      break;
     case '0':
       console.log(colors.green + "\n✓ Goodbye From NodeFlow!\n" + colors.reset);
       rl.close();
@@ -580,16 +592,29 @@ async function appStatus() {
     console.log(`   Tables: ${tables.length}`);
 
     // Models Count
-    const modelsDir = path.join(__dirname, 'app', 'models');
+    const modelsDir = path.join(__dirname, 'models');
     const modelFiles = fs.existsSync(modelsDir)
       ? fs.readdirSync(modelsDir).filter(f => f.endsWith('.js'))
       : [];
-    console.log(colors.bold + "\n📄 Models:" + colors.reset);
+    console.log(colors.bold + "\n📄 QueryBuilder Models:" + colors.reset);
     console.log(`   Count: ${modelFiles.length}`);
     modelFiles.forEach(f => console.log(`   → ${f}`));
 
+    // Prisma Schema Models
+    const prismaSchemaPath = path.join(__dirname, 'prisma', 'schema.prisma');
+    if (fs.existsSync(prismaSchemaPath)) {
+      const content = fs.readFileSync(prismaSchemaPath, 'utf8');
+      const matches = content.match(/^model\s+([A-Za-z0-9_]+)\s+\{/gm) || [];
+      console.log(colors.bold + "\n💎 Prisma Schema Models:" + colors.reset);
+      console.log(`   Count: ${matches.length}`);
+      matches.forEach(m => {
+        const name = m.replace(/^model\s+/, '').replace(/\s+\{$/, '');
+        console.log(`   → ${name}`);
+      });
+    }
+
     // Controllers Count
-    const controllersDir = path.join(__dirname, 'app', 'controllers');
+    const controllersDir = path.join(__dirname, 'controllers');
     const controllerFiles = fs.existsSync(controllersDir)
       ? fs.readdirSync(controllersDir).filter(f => f.endsWith('.js'))
       : [];
@@ -607,7 +632,7 @@ async function appStatus() {
     seederFiles.forEach(f => console.log(`   → ${f}`));
 
     // Middlewares Count
-    const middlewaresDir = path.join(__dirname, 'app', 'middlewares');
+    const middlewaresDir = path.join(__dirname, 'middlewares');
     const middlewareFiles = fs.existsSync(middlewaresDir)
       ? fs.readdirSync(middlewaresDir).filter(f => f.endsWith('.js'))
       : [];
@@ -616,7 +641,7 @@ async function appStatus() {
     middlewareFiles.forEach(f => console.log(`   → ${f}`));
 
     // Core Libraries
-    const coreDir = path.join(__dirname, 'app', 'core');
+    const coreDir = path.join(__dirname, 'core');
     const coreFiles = fs.existsSync(coreDir)
       ? fs.readdirSync(coreDir).filter(f => f.endsWith('.js'))
       : [];
@@ -742,7 +767,7 @@ async function launchQueueWorker() {
 
 async function launchTinker() {
   console.log(colors.magenta + "\nBooting NodeFlow Interactive Tinker REPL..." + colors.reset);
-  console.log(colors.white + "Pre-loaded Core Services: DB, Cache, Logger, Flash, ApiResource, Queue, HasApiTokens" + colors.reset);
+  console.log(colors.white + "Pre-loaded Core Services: DB (QueryBuilder), prisma (PrismaClient), Cache, Logger, Flash, ApiResource, Queue, HasApiTokens" + colors.reset);
   
   const modelsDir = path.join(__dirname, 'models');
   let loadedModelsCount = 0;
@@ -756,6 +781,11 @@ async function launchTinker() {
 
   // Pre-load core services
   r.context.DB = require('./config/db');
+  try {
+    r.context.prisma = require('./config/prisma');
+  } catch (err) {
+    // ignore if not configured
+  }
   r.context.Cache = require('./core/Cache');
   r.context.Logger = require('./core/Logger');
   r.context.Flash = require('./core/Flash');
@@ -792,6 +822,57 @@ async function runAutomatedTests() {
     await TestRunner.runAll();
   } catch (error) {
     console.log(colors.red + "✗ Testing failed: " + error.message + colors.reset);
+  }
+  pause();
+}
+
+async function launchPrismaStudio() {
+  console.log(colors.cyan + "\n💎 Launching Prisma Studio Web GUI..." + colors.reset);
+  console.log(colors.yellow + "Opening Prisma Studio at http://localhost:5555" + colors.reset);
+  console.log(colors.white + "Press Ctrl+C to stop Prisma Studio and return.\n" + colors.reset);
+  const { spawn } = require('child_process');
+  const prismaSchema = path.join(__dirname, 'prisma', 'schema.prisma');
+  const studio = spawn('npx', ['prisma', 'studio', '--schema', prismaSchema], {
+    stdio: 'inherit',
+    shell: true,
+    cwd: __dirname
+  });
+  studio.on('close', (code) => {
+    console.log(colors.green + `\n✓ Prisma Studio closed.` + colors.reset);
+    pause();
+  });
+}
+
+async function generatePrismaClient() {
+  console.log(colors.cyan + "\n💎 Regenerating Prisma Client..." + colors.reset);
+  const { execSync } = require('child_process');
+  const prismaSchema = path.join(__dirname, 'prisma', 'schema.prisma');
+  try {
+    const out = execSync(`npx prisma generate --schema="${prismaSchema}"`, {
+      cwd: __dirname,
+      encoding: 'utf8'
+    });
+    console.log(colors.green + out + colors.reset);
+    console.log(colors.green + "✓ Prisma Client regenerated successfully." + colors.reset);
+  } catch (error) {
+    console.log(colors.red + "✗ Failed to generate Prisma Client: " + error.message + colors.reset);
+  }
+  pause();
+}
+
+async function pushPrismaSchema() {
+  console.log(colors.cyan + "\n💎 Pushing Prisma Schema to Database..." + colors.reset);
+  const { execSync } = require('child_process');
+  const prismaSchema = path.join(__dirname, 'prisma', 'schema.prisma');
+  try {
+    const out = execSync(`npx prisma db push --schema="${prismaSchema}"`, {
+      cwd: __dirname,
+      encoding: 'utf8'
+    });
+    console.log(colors.green + out + colors.reset);
+    console.log(colors.green + "✓ Database schema synchronized successfully via Prisma." + colors.reset);
+  } catch (error) {
+    console.log(colors.red + "✗ DB push failed: " + error.message + colors.reset);
   }
   pause();
 }
