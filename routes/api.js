@@ -305,4 +305,9 @@ router.post('/templates', apiTokenAuth, TemplateController.store);
 router.put('/templates/:id', apiTokenAuth, TemplateController.update);
 router.delete('/templates/:id', apiTokenAuth, TemplateController.destroy);
 
+// AI Intelligence APIs
+const AiController = require('../app/controllers/AiController');
+router.post('/ai/ask', apiTokenAuth, AiController.ask);
+router.post('/ai/summarize', apiTokenAuth, AiController.summarize);
+
 module.exports = router;

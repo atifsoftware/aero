@@ -11,6 +11,16 @@ class QueueWorker {
   constructor() {
     this.shouldKeepWorking = true;
     this.sleepTime = 3; // Seconds to sleep when queue is empty
+
+    process.on('SIGINT', () => {
+      console.log(this.color('\n🛑 Stopping worker gracefully...', 'yellow'));
+      this.shouldKeepWorking = false;
+    });
+
+    process.on('SIGTERM', () => {
+      console.log(this.color('\n🛑 Worker terminated.', 'yellow'));
+      this.shouldKeepWorking = false;
+    });
   }
 
   /**
@@ -97,9 +107,9 @@ class QueueWorker {
           }
         }
         
-        // Delete job as max attempts exceeded
-        await Queue.delete(jobRecord.id);
-        console.log(this.color(`  Max attempts (${maxTries}) reached. Job deleted.`, 'red'));
+        // Record to failed_jobs table instead of permanently losing the job
+        await Queue.logFailed(jobRecord, error);
+        console.log(this.color(`  Max attempts (${maxTries}) reached. Job archived to failed_jobs table.`, 'red'));
       }
     }
   }

@@ -1,53 +1,97 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+
+let Redis;
+try {
+  Redis = require('ioredis');
+} catch {
+  Redis = null;
+}
 
 /**
- * NodeFlow File-based Caching System
- * Inspired by NovaFlow PHP Cache library.
- * Stores cached data as JSON files in the storage/cache directory.
+ * NodeFlow Hybrid Caching System
+ * Supports high-speed Redis caching with seamless, zero-downtime
+ * fallback to local file-based storage if Redis is unavailable.
  */
 class Cache {
-  /**
-   * Cache storage directory (relative to project root)
-   * @type {string}
-   */
-  static cacheDir = path.join(__dirname, '..', '..', 'storage', 'cache');
+  static cacheDir = path.join(process.cwd(), 'storage', 'cache');
+  static defaultTtl = 3600; // 1 hour in seconds
+  static redisClient = null;
+  static isRedisConnected = false;
+  static redisInitAttempted = false;
 
   /**
-   * Default TTL in seconds (1 hour)
-   * @type {number}
+   * Initialize Redis Client if configured
    */
-  static defaultTtl = 3600;
+  static _initRedis() {
+    if (this.redisInitAttempted) return;
+    this.redisInitAttempted = true;
+
+    if (!Redis) return;
+
+    const redisHost = process.env.REDIS_HOST || '127.0.0.1';
+    const redisPort = parseInt(process.env.REDIS_PORT) || 6379;
+    const redisPassword = process.env.REDIS_PASSWORD || undefined;
+    const redisUrl = process.env.REDIS_URL;
+
+    try {
+      if (redisUrl) {
+        this.redisClient = new Redis(redisUrl, {
+          lazyConnect: true,
+          maxRetriesPerRequest: 1,
+          enableOfflineQueue: false,
+          connectTimeout: 1000,
+          retryStrategy: () => null
+        });
+      } else {
+        this.redisClient = new Redis({
+          host: redisHost,
+          port: redisPort,
+          password: redisPassword,
+          lazyConnect: true,
+          maxRetriesPerRequest: 1,
+          enableOfflineQueue: false,
+          connectTimeout: 1000,
+          retryStrategy: () => null
+        });
+      }
+
+      this.redisClient.on('connect', () => {
+        this.isRedisConnected = true;
+      });
+
+      this.redisClient.on('error', () => {
+        this.isRedisConnected = false;
+      });
+
+      this.redisClient.connect().then(() => {
+        this.isRedisConnected = true;
+      }).catch(() => {
+        this.isRedisConnected = false;
+      });
+    } catch {
+      this.isRedisConnected = false;
+    }
+  }
 
   /**
-   * Ensure cache directory exists
+   * Ensure cache directory exists for file storage fallback
    */
   static init() {
+    this._initRedis();
     if (!fs.existsSync(this.cacheDir)) {
       fs.mkdirSync(this.cacheDir, { recursive: true });
     }
   }
 
-  /**
-   * Get the file path for a cache key
-   * @param {string} key
-   * @returns {string}
-   */
   static _getFilePath(key) {
-    // Simple hash using Node built-in crypto
-    const crypto = require('crypto');
     const hash = crypto.createHash('md5').update(key).digest('hex');
     return path.join(this.cacheDir, `${hash}.cache.json`);
   }
 
-  /**
-   * Check if a cache file is valid (exists and not expired)
-   * @param {string} filePath
-   * @returns {boolean}
-   */
   static _isValid(filePath) {
     if (!fs.existsSync(filePath)) return false;
-
     try {
       const content = fs.readFileSync(filePath, 'utf8');
       const data = JSON.parse(content);
@@ -58,15 +102,31 @@ class Cache {
   }
 
   /**
-   * Get a cached value by key
+   * Retrieve an item from the cache
    * @param {string} key
-   * @param {*} [defaultValue=null] - Value to return if cache miss
-   * @returns {*}
+   * @param {*} [defaultValue=null]
+   * @returns {Promise<*>|*}
    */
-  static get(key, defaultValue = null) {
+  static async get(key, defaultValue = null) {
     this.init();
-    const filePath = this._getFilePath(key);
 
+    if (this.isRedisConnected && this.redisClient) {
+      try {
+        const val = await this.redisClient.get(key);
+        if (val !== null && val !== undefined) {
+          try {
+            return JSON.parse(val);
+          } catch {
+            return val;
+          }
+        }
+        return defaultValue;
+      } catch {
+        // Fall back to file
+      }
+    }
+
+    const filePath = this._getFilePath(key);
     if (!this._isValid(filePath)) {
       return defaultValue;
     }
@@ -81,17 +141,43 @@ class Cache {
   }
 
   /**
-   * Store a value in cache
-   * @param {string} key
-   * @param {*} value
-   * @param {number} [ttl] - Time-to-live in seconds (defaults to 3600)
-   * @returns {boolean}
+   * Synchronous get fallback (for file-based cache)
    */
-  static set(key, value, ttl) {
-    ttl = ttl || this.defaultTtl;
+  static getSync(key, defaultValue = null) {
     this.init();
     const filePath = this._getFilePath(key);
+    if (!this._isValid(filePath)) return defaultValue;
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const data = JSON.parse(content);
+      return data.value !== undefined ? data.value : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  }
 
+  /**
+   * Store an item in the cache
+   * @param {string} key
+   * @param {*} value
+   * @param {number} [ttl] - TTL in seconds
+   * @returns {Promise<boolean>|boolean}
+   */
+  static async set(key, value, ttl = null) {
+    this.init();
+    ttl = ttl || this.defaultTtl;
+
+    if (this.isRedisConnected && this.redisClient) {
+      try {
+        const serialized = JSON.stringify(value);
+        await this.redisClient.setex(key, ttl, serialized);
+        return true;
+      } catch {
+        // Fall back to file
+      }
+    }
+
+    const filePath = this._getFilePath(key);
     const data = {
       key,
       value,
@@ -108,37 +194,68 @@ class Cache {
   }
 
   /**
-   * Check if a cache key exists and is valid
+   * Check if an item exists in the cache
    * @param {string} key
-   * @returns {boolean}
+   * @returns {Promise<boolean>}
    */
-  static has(key) {
+  static async has(key) {
     this.init();
+    if (this.isRedisConnected && this.redisClient) {
+      try {
+        const exists = await this.redisClient.exists(key);
+        return exists === 1;
+      } catch {
+        // Fall back to file
+      }
+    }
     const filePath = this._getFilePath(key);
     return this._isValid(filePath);
   }
 
   /**
-   * Delete a cache entry
+   * Remove an item from the cache
    * @param {string} key
-   * @returns {boolean}
+   * @returns {Promise<boolean>}
    */
-  static delete(key) {
+  static async delete(key) {
+    this.init();
+    let deleted = false;
+
+    if (this.isRedisConnected && this.redisClient) {
+      try {
+        const res = await this.redisClient.del(key);
+        if (res > 0) deleted = true;
+      } catch {}
+    }
+
     const filePath = this._getFilePath(key);
     if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      return true;
+      try {
+        fs.unlinkSync(filePath);
+        deleted = true;
+      } catch {}
     }
-    return false;
+
+    return deleted;
+  }
+
+  static async forget(key) {
+    return await this.delete(key);
   }
 
   /**
    * Clear all cached data
-   * @returns {number} Number of files removed
+   * @returns {Promise<number>}
    */
-  static clear() {
+  static async clear() {
     this.init();
     let count = 0;
+
+    if (this.isRedisConnected && this.redisClient) {
+      try {
+        await this.redisClient.flushdb();
+      } catch {}
+    }
 
     try {
       const files = fs.readdirSync(this.cacheDir);
@@ -148,41 +265,48 @@ class Cache {
           count++;
         }
       }
-    } catch {
-      // Directory might not exist
-    }
+    } catch {}
 
     return count;
   }
 
+  static async flush() {
+    return await this.clear();
+  }
+
   /**
-   * Get or create cache entry.
-   * If cache hit, returns stored value.
-   * If cache miss, executes callback, stores result, and returns it.
+   * Get an item from the cache, or execute the given callback and store the result
    * @param {string} key
    * @param {number} ttl - TTL in seconds
-   * @param {Function} callback - Async or sync function to generate value on cache miss
+   * @param {Function} callback
    * @returns {Promise<*>}
    */
   static async remember(key, ttl, callback) {
-    const cached = this.get(key);
-    if (cached !== null) {
+    const cached = await this.get(key);
+    if (cached !== null && cached !== undefined) {
       return cached;
     }
 
     const value = await callback();
-    this.set(key, value, ttl);
+    if (value !== undefined) {
+      await this.set(key, value, ttl);
+    }
     return value;
   }
 
   /**
-   * Clean expired cache entries
-   * @returns {number} Number of expired files removed
+   * Remember item in cache indefinitely (10 years)
+   */
+  static async rememberForever(key, callback) {
+    return await this.remember(key, 315360000, callback);
+  }
+
+  /**
+   * Clean expired cache files
    */
   static clean() {
     this.init();
     let cleaned = 0;
-
     try {
       const files = fs.readdirSync(this.cacheDir);
       for (const file of files) {
@@ -194,16 +318,12 @@ class Cache {
           }
         }
       }
-    } catch {
-      // Ignore errors
-    }
-
+    } catch {}
     return cleaned;
   }
 
   /**
    * Get cache statistics
-   * @returns {object} Stats including total files, total size, and expired count
    */
   static stats() {
     this.init();
@@ -228,11 +348,13 @@ class Cache {
           }
         }
       }
-    } catch {
-      // Ignore
-    }
+    } catch {}
 
-    return { totalFiles, totalSize, validCount, expiredCount };
+    return {
+      driver: this.isRedisConnected ? 'redis' : 'file',
+      redisConnected: this.isRedisConnected,
+      fileCache: { totalFiles, totalSize, validCount, expiredCount }
+    };
   }
 }
 

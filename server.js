@@ -36,6 +36,10 @@ app.use((req, res, next) => {
   requestContext.run({ req, res }, next);
 });
 
+// Initialize Unified API Response Decorator (res.success, res.error, res.paginate)
+const apiResponse = require('./app/middlewares/apiResponse');
+app.use(apiResponse);
+
 // Request logger middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);

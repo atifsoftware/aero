@@ -47,6 +47,10 @@ function showMenu() {
   console.log("12. " + colors.yellow + "Launch Background Queue Worker (queue:work)" + colors.reset);
   console.log("13. " + colors.magenta + "Launch Interactive Tinker REPL (tinker)" + colors.reset);
   console.log("14. " + colors.cyan + "Run Automated Framework Tests (test)" + colors.reset);
+  console.log("15. " + colors.red + "View Failed Queue Jobs (queue:failed)" + colors.reset);
+  console.log("16. " + colors.yellow + "Retry Failed Queue Job (queue:retry)" + colors.reset);
+  console.log("17. " + colors.blue + "Generate Middleware Scaffold (make:middleware)" + colors.reset);
+  console.log("18. " + colors.blue + "Generate Background Job Scaffold (make:job)" + colors.reset);
   console.log("0. " + colors.red + "Exit" + colors.reset);
   console.log("");
   
@@ -99,6 +103,18 @@ async function handleChoice(choice) {
     case '14':
       await runAutomatedTests();
       break;
+    case '15':
+      await viewFailedJobs();
+      break;
+    case '16':
+      promptRetryFailedJob();
+      return;
+    case '17':
+      promptGenerateMiddleware();
+      return;
+    case '18':
+      promptGenerateJob();
+      return;
     case '0':
       console.log(colors.green + "\n✓ Goodbye From NodeFlow!\n" + colors.reset);
       rl.close();
@@ -409,15 +425,146 @@ module.exports = ${seederName};
   });
 }
 
-function cacheClear() {
+async function cacheClear() {
   console.log(colors.yellow + "\nClearing application cache..." + colors.reset);
   try {
-    const cleaned = Cache.clear();
-    console.log(colors.green + `✓ Application cache cleared. ${cleaned} cache file(s) removed.` + colors.reset);
+    const cleaned = await Cache.clear();
+    console.log(colors.green + `✓ Application cache cleared. (Redis flushed, ${cleaned} file(s) removed).` + colors.reset);
   } catch (error) {
     console.log(colors.red + "✗ Cache clear error: " + error.message + colors.reset);
   }
   pause();
+}
+
+async function viewFailedJobs() {
+  console.log(colors.yellow + "\nFetching failed background jobs..." + colors.reset);
+  try {
+    const Queue = require('./app/core/Queue');
+    const failed = await Queue.getFailed();
+    if (failed.length === 0) {
+      console.log(colors.green + "✓ No failed jobs found. Queue is clean!" + colors.reset);
+    } else {
+      console.log(colors.bold + `\nFound ${failed.length} failed job(s):\n` + colors.reset);
+      failed.forEach(j => {
+        console.log(`${colors.cyan}[ID: ${j.id}]${colors.reset} ${colors.bold}${j.display_name}${colors.reset} (Queue: ${j.queue})`);
+        console.log(`   Failed at: ${j.failed_at}`);
+        try {
+          const ex = JSON.parse(j.exception);
+          console.log(`   Error: ${colors.red}${ex.message}${colors.reset}`);
+        } catch {
+          console.log(`   Error: ${colors.red}${j.exception}${colors.reset}`);
+        }
+        console.log('');
+      });
+    }
+  } catch (error) {
+    console.log(colors.red + "✗ Failed to fetch failed jobs: " + error.message + colors.reset);
+  }
+  pause();
+}
+
+function promptRetryFailedJob() {
+  rl.question(colors.yellow + "\nEnter Failed Job ID to retry: " + colors.reset, async (id) => {
+    const jobId = parseInt(id.trim());
+    if (!jobId) {
+      console.log(colors.red + "✗ Invalid job ID." + colors.reset);
+      pause();
+      return;
+    }
+    try {
+      const Queue = require('./app/core/Queue');
+      const retried = await Queue.retry(jobId);
+      if (retried) {
+        console.log(colors.green + `✓ Failed job #${jobId} pushed back into active queue.` + colors.reset);
+      } else {
+        console.log(colors.red + `✗ Failed job #${jobId} not found.` + colors.reset);
+      }
+    } catch (error) {
+      console.log(colors.red + "✗ Retry error: " + error.message + colors.reset);
+    }
+    pause();
+  });
+}
+
+function promptGenerateMiddleware() {
+  rl.question(colors.yellow + "\nEnter Middleware Name (e.g. CheckRole): " + colors.reset, (name) => {
+    const mwName = name.trim();
+    if (!mwName) {
+      console.log(colors.red + "✗ Middleware name cannot be empty." + colors.reset);
+      pause();
+      return;
+    }
+    try {
+      const targetDir = path.join(__dirname, 'app', 'middlewares');
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+      const filePath = path.join(targetDir, `${mwName}.js`);
+      if (fs.existsSync(filePath)) throw new Error(`Middleware ${mwName}.js already exists!`);
+
+      const template = `/**
+ * ${mwName} Middleware
+ */
+module.exports = function ${mwName}(req, res, next) {
+  // Add custom middleware logic here
+  next();
+};
+`;
+      fs.writeFileSync(filePath, template, 'utf8');
+      console.log(colors.green + `✓ Middleware scaffold created at: app/middlewares/${mwName}.js` + colors.reset);
+    } catch (error) {
+      console.log(colors.red + "✗ Scaffold failed: " + error.message + colors.reset);
+    }
+    pause();
+  });
+}
+
+function promptGenerateJob() {
+  rl.question(colors.yellow + "\nEnter Job Name (e.g. ProcessReportJob): " + colors.reset, (name) => {
+    const jobName = name.trim();
+    if (!jobName) {
+      console.log(colors.red + "✗ Job name cannot be empty." + colors.reset);
+      pause();
+      return;
+    }
+    try {
+      const targetDir = path.join(__dirname, 'app', 'jobs');
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+      const filePath = path.join(targetDir, `${jobName}.js`);
+      if (fs.existsSync(filePath)) throw new Error(`Job ${jobName}.js already exists!`);
+
+      const template = `const Job = require('../core/Job');
+
+class ${jobName} extends Job {
+  constructor(data = {}) {
+    super(data);
+    this.tries = 3;
+    this.delay = 0;
+  }
+
+  /**
+   * Execute the job
+   */
+  async handle() {
+    console.log('[Job] Executing ${jobName} with data:', this.data);
+    // Add background processing logic here
+  }
+
+  /**
+   * Optional custom failure handler
+   */
+  async failed(error) {
+    console.error('[Job Failed] ${jobName}:', error.message);
+  }
+}
+
+module.exports = ${jobName};
+`;
+      fs.writeFileSync(filePath, template, 'utf8');
+      console.log(colors.green + `✓ Job scaffold created at: app/jobs/${jobName}.js` + colors.reset);
+    } catch (error) {
+      console.log(colors.red + "✗ Scaffold failed: " + error.message + colors.reset);
+    }
+    pause();
+  });
 }
 
 async function appStatus() {

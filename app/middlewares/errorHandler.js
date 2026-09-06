@@ -84,14 +84,16 @@ module.exports = (err, req, res, next) => {
     return next(err);
   }
 
-  const isApi = req.xhr || req.headers.accept?.indexOf('json') > -1 || req.path.startsWith('/api/');
+  const isApi = req.xhr || 
+                req.headers.accept?.indexOf('json') > -1 || 
+                req.path?.startsWith('/api/') || 
+                req.originalUrl?.startsWith('/api');
 
   // Parse file and line number from error stack trace
   let errorFile = 'Unknown';
   let errorLine = 0;
   
   if (err.stack) {
-    // Regex matching standard Node stack frames e.g., "at HomeController.index (d:\nodejs\express-js\app\controllers\HomeController.js:12:9)"
     const match = err.stack.match(/at\s+.*?\((.*?):(\d+):(\d+)\)/) || err.stack.match(/at\s+(.*?):(\d+):(\d+)/);
     if (match) {
       errorFile = match[1];
@@ -99,25 +101,32 @@ module.exports = (err, req, res, next) => {
     }
   }
 
+  const statusCode = err.status || err.statusCode || 500;
   const error = {
     type: err.name || 'Runtime Error',
     message: err.message || 'An unexpected error occurred.',
     file: errorFile,
     line: errorLine,
-    severity: err.status >= 500 ? 'critical' : 'high',
+    severity: statusCode >= 500 ? 'critical' : 'high',
     stack: err.stack || ''
   };
 
   // 1. Return API JSON payload if applicable
   if (isApi) {
-    return res.status(err.status || 500).json({
+    const isDev = process.env.NODE_ENV !== 'production';
+    return res.status(statusCode).json({
       status: 'error',
-      success: false,
+      message: error.message,
       error: {
         type: error.type,
-        message: error.message,
-        file: path.basename(error.file),
-        line: error.line
+        ...(isDev ? {
+          file: path.basename(error.file),
+          line: error.line,
+          stack: error.stack.split('\n').slice(0, 5)
+        } : {})
+      },
+      meta: {
+        timestamp: new Date().toISOString()
       }
     });
   }

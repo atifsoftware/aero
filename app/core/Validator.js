@@ -171,6 +171,14 @@ class Validator {
   }
 
   /**
+   * Check if validation passed
+   * @returns {boolean}
+   */
+  passes() {
+    return Object.keys(this._errors).length === 0;
+  }
+
+  /**
    * Get all validation errors
    * @returns {object}
    */
@@ -179,12 +187,16 @@ class Validator {
   }
 
   /**
-   * Get first error for a specific field
-   * @param {string} field
+   * Get first error for a specific field, or very first error if field not specified
+   * @param {string} [field=null]
    * @returns {string|null}
    */
-  firstError(field) {
-    return this._errors[field] ? this._errors[field][0] : null;
+  firstError(field = null) {
+    if (field) {
+      return this._errors[field] ? this._errors[field][0] : null;
+    }
+    const firstKey = Object.keys(this._errors)[0];
+    return firstKey ? this._errors[firstKey][0] : null;
   }
 
   /**

@@ -1,22 +1,112 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Create connection pool using environmental variables
+// Resolve Logger lazily to prevent circular dependencies
+let _logger = null;
+function getLogger() {
+  if (!_logger) {
+    try {
+      _logger = require('../app/core/Logger');
+    } catch {
+      _logger = null;
+    }
+  }
+  return _logger;
+}
+
+/**
+ * Parse Database Configuration from environment
+ * Supports both DATABASE_URL and individual DB_* variables
+ */
+function resolveDbConfig() {
+  if (process.env.DATABASE_URL) {
+    try {
+      const parsedUrl = new URL(process.env.DATABASE_URL);
+      return {
+        host: parsedUrl.hostname || 'localhost',
+        port: parseInt(parsedUrl.port) || 3306,
+        user: decodeURIComponent(parsedUrl.username || 'root'),
+        password: decodeURIComponent(parsedUrl.password || ''),
+        database: (parsedUrl.pathname || '').replace(/^\//, '') || 'nodeflow_db',
+      };
+    } catch (e) {
+      console.warn('[DB] Failed to parse DATABASE_URL, falling back to discrete DB_* env vars.');
+    }
+  }
+
+  return {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || '',
+    database: process.env.DB_NAME || 'nodeflow_db',
+  };
+}
+
+const dbConfig = resolveDbConfig();
+const slowQueryThresholdMs = parseInt(process.env.SLOW_QUERY_THRESHOLD_MS) || 100;
+
+// Create connection pool
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'pharmacy_erp_db_online',
+  host: dbConfig.host,
+  port: dbConfig.port,
+  user: dbConfig.user,
+  password: dbConfig.password,
+  database: dbConfig.database,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 15,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0
 });
 
+// Flag to track whether database auto-creation check was executed
+let dbChecked = false;
+
 /**
- * Fluent Query Builder Class
+ * Ensure database exists on the target MySQL server.
+ * Automatically runs CREATE DATABASE IF NOT EXISTS if needed.
+ */
+async function ensureDatabaseExists() {
+  if (dbChecked) return;
+  try {
+    const rawConnection = await mysql.createConnection({
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      password: dbConfig.password
+    });
+    await rawConnection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
+    await rawConnection.end();
+    dbChecked = true;
+  } catch (err) {
+    // If permission denied or server unreachable, proceed and let connection pool report
+    dbChecked = true;
+  }
+}
+
+// Trigger check in background
+ensureDatabaseExists().catch(() => {});
+
+/**
+ * Audit and log query performance if it exceeds threshold
+ */
+function auditQueryPerformance(sql, params, durationMs) {
+  if (durationMs >= slowQueryThresholdMs) {
+    const logger = getLogger();
+    const msg = `[SLOW QUERY] (${durationMs}ms) ${sql} | Params: ${JSON.stringify(params || [])}`;
+    if (logger && typeof logger.warning === 'function') {
+      logger.warning(msg);
+    } else {
+      console.warn(`\x1b[33m${msg}\x1b[0m`);
+    }
+  }
+}
+
+/**
+ * Fluent Query Builder Class for NodeFlow
  */
 class QueryBuilder {
   constructor(table, connection = null) {
@@ -50,11 +140,12 @@ class QueryBuilder {
       tableName = parts[0].trim();
       alias = ` AS \`${parts[1].trim()}\``;
     }
-    const escTable = tableName.includes('.') ? tableName.split('.').map(t => `\`${t}\``).join('.') : `\`${tableName}\``;
+    const escTable = tableName.includes('.') 
+      ? tableName.split('.').map(t => `\`${t}\``).join('.') 
+      : `\`${tableName}\``;
     return `${escTable}${alias}`;
   }
 
-  // Internal helper to register a where clause block
   _addWhere(boolean, sql, bindings = []) {
     this._wheres.push({ boolean, sql, bindings });
     return this;
@@ -137,6 +228,13 @@ class QueryBuilder {
     return this;
   }
 
+  whereNotBetween(column, range) {
+    if (!Array.isArray(range) || range.length !== 2) return this;
+    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    this._addWhere('AND', `${colName} NOT BETWEEN ? AND ?`, range);
+    return this;
+  }
+
   whereLike(column, value) {
     return this.where(column, 'LIKE', value);
   }
@@ -147,6 +245,11 @@ class QueryBuilder {
 
   whereRaw(sql, bindings = []) {
     this._addWhere('AND', sql, bindings);
+    return this;
+  }
+
+  orWhereRaw(sql, bindings = []) {
+    this._addWhere('OR', sql, bindings);
     return this;
   }
 
@@ -193,6 +296,14 @@ class QueryBuilder {
     return this;
   }
 
+  latest(column = 'created_at') {
+    return this.orderBy(column, 'DESC');
+  }
+
+  oldest(column = 'created_at') {
+    return this.orderBy(column, 'ASC');
+  }
+
   limit(count) {
     this._limit = parseInt(count);
     return this;
@@ -212,7 +323,6 @@ class QueryBuilder {
     return this;
   }
 
-  // Internal helper to compile wheres into query syntax
   _compileWheres() {
     if (this._wheres.length === 0) {
       return { sql: '', bindings: [] };
@@ -265,18 +375,34 @@ class QueryBuilder {
     return sql;
   }
 
+  toRawSql() {
+    let sql = this.toSql();
+    const bindings = this.getBindings();
+    bindings.forEach(val => {
+      const formatted = typeof val === 'string' ? `'${val.replace(/'/g, "\\'")}'` : val;
+      sql = sql.replace('?', formatted);
+    });
+    return sql;
+  }
+
   getBindings() {
     const { bindings } = this._compileWheres();
     return [...bindings, ...this._havingBindings];
   }
 
-  /**
-   * Helper to execute queries on standard pool or explicit transaction connection
-   */
   async _query(sql, bindings = []) {
     const executor = this._connection || pool;
-    const [rows] = await executor.query(sql, bindings);
-    return rows;
+    const start = Date.now();
+    try {
+      const [rows] = await executor.query(sql, bindings);
+      const duration = Date.now() - start;
+      auditQueryPerformance(sql, bindings, duration);
+      return rows;
+    } catch (err) {
+      const duration = Date.now() - start;
+      auditQueryPerformance(sql, bindings, duration);
+      throw err;
+    }
   }
 
   async get() {
@@ -293,6 +419,93 @@ class QueryBuilder {
     return rows.length > 0 ? rows[0] : null;
   }
 
+  async find(id, primaryKey = 'id') {
+    return await this.where(primaryKey, id).first();
+  }
+
+  async exists() {
+    this.limit(1);
+    const sql = this.toSql();
+    const bindings = this.getBindings();
+    const rows = await this._query(sql, bindings);
+    return rows.length > 0;
+  }
+
+  async doesntExist() {
+    const exists = await this.exists();
+    return !exists;
+  }
+
+  async pluck(column, key = null) {
+    this.select(key ? [column, key] : [column]);
+    const rows = await this.get();
+    if (key) {
+      const result = {};
+      rows.forEach(r => { result[r[key]] = r[column]; });
+      return result;
+    }
+    return rows.map(r => r[column]);
+  }
+
+  /**
+   * Enterprise Pagination
+   * Returns data array and full pagination metadata
+   */
+  async paginate(page = 1, perPage = 15) {
+    page = Math.max(1, parseInt(page) || 1);
+    perPage = Math.max(1, parseInt(perPage) || 15);
+
+    // Count total rows matching criteria
+    const total = await this.count();
+
+    const offset = (page - 1) * perPage;
+    this.offset(offset).limit(perPage);
+    const data = await this.get();
+
+    const lastPage = Math.ceil(total / perPage) || 1;
+
+    return {
+      data,
+      pagination: {
+        total,
+        per_page: perPage,
+        current_page: page,
+        last_page: lastPage,
+        from: total === 0 ? 0 : offset + 1,
+        to: Math.min(offset + perPage, total),
+        has_more: page < lastPage,
+        has_previous: page > 1
+      }
+    };
+  }
+
+  /**
+   * Chunk records in memory-safe batches
+   */
+  async chunk(size, callback) {
+    let page = 1;
+    let keepGoing = true;
+    while (keepGoing) {
+      const clone = new QueryBuilder(this._table, this._connection);
+      clone._wheres = [...this._wheres];
+      clone._joins = [...this._joins];
+      clone._orders = [...this._orders];
+      clone._select = this._select;
+      clone.offset((page - 1) * size).limit(size);
+
+      const records = await clone.get();
+      if (!records || records.length === 0) break;
+
+      const res = await callback(records, page);
+      if (res === false) {
+        keepGoing = false;
+        break;
+      }
+      if (records.length < size) break;
+      page++;
+    }
+  }
+
   async insert(data) {
     const keys = Object.keys(data);
     const escapedKeys = keys.map(k => `\`${k}\``).join(', ');
@@ -301,7 +514,9 @@ class QueryBuilder {
     const values = Object.values(data);
 
     const executor = this._connection || pool;
+    const start = Date.now();
     const [result] = await executor.query(sql, values);
+    auditQueryPerformance(sql, values, Date.now() - start);
     return result.insertId;
   }
 
@@ -317,7 +532,9 @@ class QueryBuilder {
     }
 
     const executor = this._connection || pool;
+    const start = Date.now();
     const [result] = await executor.query(sql, [...values, ...whereBindings]);
+    auditQueryPerformance(sql, [...values, ...whereBindings], Date.now() - start);
     return result.affectedRows;
   }
 
@@ -330,7 +547,9 @@ class QueryBuilder {
     }
 
     const executor = this._connection || pool;
+    const start = Date.now();
     const [result] = await executor.query(sql, whereBindings);
+    auditQueryPerformance(sql, whereBindings, Date.now() - start);
     return result.affectedRows;
   }
 
@@ -348,7 +567,7 @@ class QueryBuilder {
     }
 
     const rows = await this._query(sql, whereBindings);
-    return rows[0].total;
+    return rows[0] ? Number(rows[0].total) : 0;
   }
 
   async sum(column) {
@@ -366,7 +585,7 @@ class QueryBuilder {
     }
 
     const rows = await this._query(sql, whereBindings);
-    return Number(rows[0].aggregate || 0);
+    return rows[0] ? Number(rows[0].aggregate || 0) : 0;
   }
 
   async avg(column) {
@@ -384,34 +603,52 @@ class QueryBuilder {
     }
 
     const rows = await this._query(sql, whereBindings);
-    return Number(rows[0].aggregate || 0);
+    return rows[0] ? Number(rows[0].aggregate || 0) : 0;
+  }
+
+  async min(column) {
+    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const escTable = this._parseTableName(this._table);
+    let sql = `SELECT MIN(${colName}) AS aggregate FROM ${escTable}`;
+    const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
+    if (whereSql) sql += ` WHERE ${whereSql}`;
+    const rows = await this._query(sql, whereBindings);
+    return rows[0] ? rows[0].aggregate : null;
+  }
+
+  async max(column) {
+    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const escTable = this._parseTableName(this._table);
+    let sql = `SELECT MAX(${colName}) AS aggregate FROM ${escTable}`;
+    const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
+    if (whereSql) sql += ` WHERE ${whereSql}`;
+    const rows = await this._query(sql, whereBindings);
+    return rows[0] ? rows[0].aggregate : null;
   }
 
   async increment(column, amount = 1) {
     const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
     let sql = `UPDATE \`${this._table}\` SET ${colName} = ${colName} + ?`;
-
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
-    if (whereSql) {
-      sql += ` WHERE ${whereSql}`;
-    }
+    if (whereSql) sql += ` WHERE ${whereSql}`;
 
     const executor = this._connection || pool;
+    const start = Date.now();
     const [result] = await executor.query(sql, [amount, ...whereBindings]);
+    auditQueryPerformance(sql, [amount, ...whereBindings], Date.now() - start);
     return result.affectedRows;
   }
 
   async decrement(column, amount = 1) {
     const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
     let sql = `UPDATE \`${this._table}\` SET ${colName} = ${colName} - ?`;
-
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
-    if (whereSql) {
-      sql += ` WHERE ${whereSql}`;
-    }
+    if (whereSql) sql += ` WHERE ${whereSql}`;
 
     const executor = this._connection || pool;
+    const start = Date.now();
     const [result] = await executor.query(sql, [amount, ...whereBindings]);
+    auditQueryPerformance(sql, [amount, ...whereBindings], Date.now() - start);
     return result.affectedRows;
   }
 }
@@ -421,8 +658,12 @@ class QueryBuilder {
  */
 const DB = {
   pool,
+  config: dbConfig,
+  ensureDatabaseExists,
   query: async (sql, params = []) => {
+    const start = Date.now();
     const [rows] = await pool.query(sql, params);
+    auditQueryPerformance(sql, params, Date.now() - start);
     return rows;
   },
   getConnection: async () => {
@@ -430,6 +671,9 @@ const DB = {
   },
   table: (name, connection = null) => {
     return new QueryBuilder(name, connection);
+  },
+  raw: (sql) => {
+    return { raw: sql };
   },
   beginTransaction: async () => {
     const connection = await pool.getConnection();
@@ -442,8 +686,12 @@ const DB = {
       await connection.beginTransaction();
 
       const transactionDB = {
+        pool: connection,
         query: async (sql, params = []) => {
-          return await connection.query(sql, params);
+          const start = Date.now();
+          const res = await connection.query(sql, params);
+          auditQueryPerformance(sql, params, Date.now() - start);
+          return Array.isArray(res) ? res[0] : res;
         },
         table: (name) => {
           return new QueryBuilder(name, connection);
