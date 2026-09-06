@@ -8,7 +8,7 @@ TestRunner.register('User Management ORM CRUD Integrity', async (assert) => {
   // Clean existing test user if any
   const existing = await User.findByEmail(testEmail);
   if (existing) {
-    await User.query().where('email', testEmail).delete();
+    await User.query().where('username', testEmail).delete();
   }
 
   // 1. Create a user
@@ -16,7 +16,7 @@ TestRunner.register('User Management ORM CRUD Integrity', async (assert) => {
     name: 'Temporary Staff Partner',
     email: testEmail,
     password: 'securepass123',
-    role: 'staff',
+    role: 'manager',
     status: 0 // suspended
   });
 
@@ -26,7 +26,7 @@ TestRunner.register('User Management ORM CRUD Integrity', async (assert) => {
   const staff = await User.find(userId);
   assert.ok(staff, 'Staff user should be retrieved.');
   assert.strictEqual(staff.get('name'), 'Temporary Staff Partner', 'Name should match.');
-  assert.strictEqual(staff.get('role'), 'staff', 'Role must be staff.');
+  assert.strictEqual(staff.get('role'), 'manager', 'Role must be manager.');
   assert.strictEqual(parseInt(staff.get('status')), 0, 'Status must be suspended.');
   assert.ok(User.verifyPassword('securepass123', staff.get('password')), 'Password verification should succeed.');
 

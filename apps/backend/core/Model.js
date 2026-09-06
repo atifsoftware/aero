@@ -257,14 +257,34 @@ class Model {
   //  CRUD OPERATIONS
   // ──────────────────────────────────────────────
 
+  /**
+   * Retrieve all records for this model
+   * @template T
+   * @this {new (...args: any[]) => T}
+   * @returns {Promise<T[]>}
+   */
   static async all() {
     return await this.query().get();
   }
 
+  /**
+   * Find a record by its primary key
+   * @template T
+   * @this {new (...args: any[]) => T}
+   * @param {number|string} id
+   * @returns {Promise<T|null>}
+   */
   static async find(id) {
     return await this.query().where(this.primaryKey, id).first();
   }
 
+  /**
+   * Find a record or throw an error if not found
+   * @template T
+   * @this {new (...args: any[]) => T}
+   * @param {number|string} id
+   * @returns {Promise<T>}
+   */
   static async findOrFail(id) {
     const result = await this.find(id);
     if (!result) {
@@ -273,10 +293,21 @@ class Model {
     return result;
   }
 
+  /**
+   * Insert a new record
+   * @param {Record<string, any>} data
+   * @returns {Promise<number>} Inserted row ID
+   */
   static async create(data) {
     return await this.query().insert(data);
   }
 
+  /**
+   * Update a record by primary key
+   * @param {number|string} id
+   * @param {Record<string, any>} data
+   * @returns {Promise<number>} Affected rows
+   */
   static async update(id, data) {
     return await this.query().where(this.primaryKey, id).update(data);
   }

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const Throttle = require('../core/Throttle');
 const apiTokenAuth = require('../middlewares/apiTokenAuth');
 const apiCan = require('../middlewares/apiCan');
 const ApiAuthController = require('../controllers/ApiAuthController');
@@ -38,7 +39,7 @@ const TemplateController = require('../controllers/TemplateController');
  *                   example: success
  *                 message:
  *                   type: string
- *                   example: NodeFlow API Server is running successfully.
+ *                   example: Aero MVC API Server is running successfully.
  *                 timestamp:
  *                   type: string
  *                   example: 2026-06-15T15:30:22.299Z
@@ -46,7 +47,7 @@ const TemplateController = require('../controllers/TemplateController');
 router.get('/status', (req, res) => {
   res.json({
     status: 'success',
-    message: 'NodeFlow API Server is running successfully.',
+    message: 'Aero MVC API Server is running successfully.',
     timestamp: new Date().toISOString()
   });
 });
@@ -131,9 +132,16 @@ router.get('/dashboard/framework-stats', async (req, res, next) => {
 
 /**
  * POST /api/login
- * Issue a Personal Access Token for authentication
+ * Issue a Personal Access Token for authentication (Rate limited: 5 attempts/min)
  */
-router.post('/login', ApiAuthController.issueToken);
+router.post('/login', Throttle.auth(), ApiAuthController.issueToken);
+
+/**
+ * Personal Access Token Lifecycle Management
+ */
+router.post('/auth/token/refresh', Throttle.auth(), apiTokenAuth, ApiAuthController.refreshToken);
+router.post('/auth/token/revoke', apiTokenAuth, ApiAuthController.revokeToken);
+router.get('/auth/tokens', apiTokenAuth, ApiAuthController.listTokens);
 
 /**
  * @swagger
@@ -235,22 +243,24 @@ router.put('/incomes/:id', apiTokenAuth, apiCan('edit_income'), VoucherControlle
 router.delete('/incomes/:id', apiTokenAuth, apiCan('delete_income'), VoucherController.deleteIncome);
 
 // Customer Tally Khata CRUD
+// NOTE: Static routes MUST come before dynamic :id routes to avoid Express swallowing them
 router.get('/customers', apiTokenAuth, CustomerController.index);
-router.get('/customers/:id', apiTokenAuth, CustomerController.show);
 router.post('/customers', apiTokenAuth, CustomerController.create);
+router.delete('/customers/ledger/:ledgerId', apiTokenAuth, apiCan('delete_tally'), CustomerController.deleteTransaction);
+router.get('/customers/:id', apiTokenAuth, CustomerController.show);
 router.put('/customers/:id', apiTokenAuth, CustomerController.update);
 router.get('/customers/:id/ledger', apiTokenAuth, CustomerController.getLedger);
 router.post('/customers/:id/transaction', apiTokenAuth, CustomerController.addTransaction);
-router.delete('/customers/ledger/:ledgerId', apiTokenAuth, apiCan('delete_tally'), CustomerController.deleteTransaction);
 
 // Supplier Mahajon Khata CRUD
+// NOTE: Static routes MUST come before dynamic :id routes to avoid Express swallowing them
 router.get('/suppliers', apiTokenAuth, SupplierController.index);
-router.get('/suppliers/:id', apiTokenAuth, SupplierController.show);
 router.post('/suppliers', apiTokenAuth, SupplierController.create);
+router.delete('/suppliers/ledger/:ledgerId', apiTokenAuth, apiCan('delete_tally'), SupplierController.deleteTransaction);
+router.get('/suppliers/:id', apiTokenAuth, SupplierController.show);
 router.put('/suppliers/:id', apiTokenAuth, SupplierController.update);
 router.get('/suppliers/:id/ledger', apiTokenAuth, SupplierController.getLedger);
 router.post('/suppliers/:id/transaction', apiTokenAuth, SupplierController.addTransaction);
-router.delete('/suppliers/ledger/:ledgerId', apiTokenAuth, apiCan('delete_tally'), SupplierController.deleteTransaction);
 
 // Daily Sheet CRUD
 router.get('/daily-sheets', apiTokenAuth, DailySheetController.index);
@@ -260,10 +270,13 @@ router.post('/daily-sheets', apiTokenAuth, DailySheetController.create);
 router.put('/daily-sheets/:id', apiTokenAuth, DailySheetController.update);
 
 // Employee & Salaries management
+// NOTE: All static/sub-resource routes must be declared BEFORE /:id to prevent Express
+// from treating path segments like 'advances' or 'loans' as an :id parameter.
 router.get('/employees', apiTokenAuth, EmployeeController.index);
-router.get('/employees/advances/all', apiTokenAuth, EmployeeController.getAllAdvances);
-router.get('/employees/:id', apiTokenAuth, EmployeeController.show);
 router.post('/employees', apiTokenAuth, EmployeeController.create);
+router.get('/employees/advances/all', apiTokenAuth, EmployeeController.getAllAdvances);
+router.post('/employees/loans/:advanceId/repay', apiTokenAuth, EmployeeController.repayLoan);
+router.get('/employees/:id', apiTokenAuth, EmployeeController.show);
 router.put('/employees/:id', apiTokenAuth, EmployeeController.update);
 router.get('/employees/:id/pending-advances', apiTokenAuth, EmployeeController.getPendingAdvances);
 router.post('/employees/:id/advance', apiTokenAuth, EmployeeController.addAdvance);
@@ -272,9 +285,6 @@ router.post('/employees/:id/salary', apiTokenAuth, EmployeeController.addSalary)
 // Salary Records
 router.get('/salaries', apiTokenAuth, EmployeeController.getSalaries);
 router.delete('/salaries/:id', apiTokenAuth, apiCan('delete_salary'), EmployeeController.deleteSalary);
-
-// Employee Loan Repayment
-router.post('/employees/loans/:advanceId/repay', apiTokenAuth, EmployeeController.repayLoan);
 
 // Fund Transfers
 router.get('/transfers', apiTokenAuth, TransferController.index);

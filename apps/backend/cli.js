@@ -25,7 +25,7 @@ const colors = {
 function printHeader() {
   console.clear();
   console.log(colors.cyan + "╔════════════════════════════════════════════╗" + colors.reset);
-  console.log(colors.cyan + "║      " + colors.bold + "NODEFLOW CORE CLI TOOL" + colors.cyan + "        ║" + colors.reset);
+  console.log(colors.cyan + "║          " + colors.bold + "AERO MVC CORE CLI" + colors.cyan + "         ║" + colors.reset);
   console.log(colors.cyan + "║       " + "Framework Development Kit" + colors.cyan + "      ║" + colors.reset);
   console.log(colors.cyan + "╚════════════════════════════════════════════╝" + colors.reset);
   console.log("");
@@ -128,7 +128,7 @@ async function handleChoice(choice) {
       await pushPrismaSchema();
       break;
     case '0':
-      console.log(colors.green + "\n✓ Goodbye From NodeFlow!\n" + colors.reset);
+      console.log(colors.green + "\n✓ Goodbye From Aero MVC!\n" + colors.reset);
       rl.close();
       process.exit(0);
     default:
@@ -138,6 +138,10 @@ async function handleChoice(choice) {
 }
 
 function pause() {
+  if (process.argv[2]) {
+    rl.close();
+    process.exit(0);
+  }
   rl.question("\nPress Enter to continue...", () => {
     printHeader();
     showMenu();
@@ -580,7 +584,7 @@ module.exports = ${jobName};
 }
 
 async function appStatus() {
-  console.log(colors.yellow + "\nNodeFlow Framework Status Overview" + colors.reset);
+  console.log(colors.yellow + "\nAero MVC Framework Status Overview" + colors.reset);
   console.log(colors.cyan + "─────────────────────────────────────" + colors.reset);
 
   try {
@@ -880,5 +884,10 @@ async function pushPrismaSchema() {
 // Kickstart CLI on execute
 if (require.main === module) {
   printHeader();
-  showMenu();
+  const arg = process.argv[2];
+  if (arg) {
+    handleChoice(arg.trim());
+  } else {
+    showMenu();
+  }
 }

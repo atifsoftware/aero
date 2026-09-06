@@ -13,14 +13,39 @@ const compression = require('compression');
 // Load environment variables
 dotenv.config();
 
+// ─── Startup Security & Environment Validation ───────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  const INSECURE_DEFAULTS = [
+    ['SESSION_SECRET', 'aero_default_secret_key_123'],
+    ['SESSION_SECRET', 'nodeflow_default_secret_key_123'],
+    ['JWT_SECRET', 'aero_jwt_secret_key_change_me'],
+    ['JWT_SECRET', 'nodeflow_jwt_secret_key_change_me']
+  ];
+  INSECURE_DEFAULTS.forEach(([key, defaultVal]) => {
+    if (!process.env[key] || process.env[key] === defaultVal) {
+      console.error(`\x1b[31m[SECURITY] ❌ ${key} is using an insecure default value in production! Server startup aborted.\x1b[0m`);
+      process.exit(1);
+    }
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const app = express();
 app.set('trust proxy', 1); // Trust the reverse proxy to get correct client IP for rate limiting
 
-// Enable CORS for external API clients
+// Enable CORS for external API clients (whitelist-based, not wildcard)
+const _allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000').split(',').map(o => o.trim());
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (origin && _allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // Allow same-origin server-to-server or direct requests
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -117,8 +142,8 @@ async function reloadSettingsCache() {
   try {
     const tables = await DB.query("SHOW TABLES LIKE 'settings'");
     let settingsMap = {
-      name: 'NodeFlow Framework',
-      short_name: 'NodeFlow',
+      name: 'Aero MVC Framework',
+      short_name: 'Aero',
       logo: '',
       favicon: ''
     };
@@ -135,8 +160,8 @@ async function reloadSettingsCache() {
     console.error('Failed to reload settings cache:', err);
     if (!settingsCache) {
       settingsCache = {
-        name: 'NodeFlow Framework',
-        short_name: 'NodeFlow',
+        name: 'Aero MVC Framework',
+        short_name: 'Aero',
         logo: '',
         favicon: ''
       };
@@ -217,7 +242,7 @@ Socket.init(server);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`================================================`);
-  console.log(`🚀 NodeFlow Server is running at http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Aero MVC Server is running at http://0.0.0.0:${PORT}`);
   console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`================================================`);
 });

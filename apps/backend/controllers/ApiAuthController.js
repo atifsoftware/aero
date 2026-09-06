@@ -67,7 +67,7 @@ class ApiAuthController {
         });
       }
 
-      if (user.get('is_active') !== 1 && user.get('is_active') !== 'active') {
+      if (user.get('is_active') !== 1 && user.get('is_active') !== '1' && user.get('is_active') !== 'active') {
         Logger.logActivity('API login attempt failed (Suspended account)', { username });
         return res.status(403).json({
           success: false,
@@ -209,8 +209,9 @@ class ApiAuthController {
         });
       }
 
+      const expiresIn = req.body.expires_in || '30d';
       const HasApiTokens = require('../core/HasApiTokens');
-      const { plainTextToken } = await HasApiTokens.createToken(user, token_name || 'Mobile App Access Token');
+      const tokenResult = await HasApiTokens.createToken(user, token_name || 'Mobile App Access Token', ['*'], expiresIn);
 
       let permissions = [];
       const rawPerms = user.get('permissions');
@@ -224,7 +225,9 @@ class ApiAuthController {
 
       return res.status(200).json({
         status: 'success',
-        token: plainTextToken,
+        token: tokenResult.plainTextToken,
+        expires_at: tokenResult.expires_at,
+        created_at: tokenResult.created_at,
         user: {
           id: user.get('user_id'),
           name: user.get('full_name'),
@@ -238,6 +241,139 @@ class ApiAuthController {
       return res.status(500).json({
         status: 'error',
         message: 'অভ্যন্তরীণ সার্ভার ত্রুটি।'
+      });
+    }
+  }
+
+  /**
+   * Refresh an active Personal Access Token before expiration
+   */
+  static async refreshToken(req, res) {
+    try {
+      const authHeader = req.headers['authorization'];
+      const plainToken = req.body.token || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : null);
+
+      if (!plainToken) {
+        return res.status(400).json({
+          status: 'error',
+          code: 'TOKEN_REQUIRED',
+          message: 'Token is required for refresh.'
+        });
+      }
+
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({
+          status: 'error',
+          code: 'UNAUTHORIZED',
+          message: 'User authentication required.'
+        });
+      }
+
+      const expiresIn = req.body.expires_in || '30d';
+      const HasApiTokens = require('../core/HasApiTokens');
+      const refreshed = await HasApiTokens.refreshToken(user, plainToken, expiresIn);
+
+      if (!refreshed) {
+        return res.status(400).json({
+          status: 'error',
+          code: 'REFRESH_FAILED',
+          message: 'Token is invalid or already expired and cannot be refreshed.'
+        });
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Token refreshed successfully.',
+        token: refreshed.plainTextToken,
+        expires_at: refreshed.expires_at,
+        created_at: refreshed.created_at
+      });
+    } catch (error) {
+      console.error('API token refresh error:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Token refresh internal error: ' + error.message
+      });
+    }
+  }
+
+  /**
+   * Revoke active token or all tokens for authorized user
+   */
+  static async revokeToken(req, res) {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Unauthorized.'
+        });
+      }
+
+      const HasApiTokens = require('../core/HasApiTokens');
+      if (req.body.all === true) {
+        await HasApiTokens.revokeAllTokens(user);
+        return res.status(200).json({
+          status: 'success',
+          message: 'All personal access tokens revoked successfully.'
+        });
+      }
+
+      const targetToken = req.body.token_id || req.body.token || (req.token ? req.token.id : null);
+      if (targetToken) {
+        await HasApiTokens.revokeToken(user, targetToken);
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Token revoked successfully.'
+      });
+    } catch (error) {
+      console.error('API token revoke error:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to revoke token.'
+      });
+    }
+  }
+
+  /**
+   * List all tokens for authorized user
+   */
+  static async listTokens(req, res) {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Unauthorized.'
+        });
+      }
+
+      const HasApiTokens = require('../core/HasApiTokens');
+      const tokens = await HasApiTokens.tokens(user);
+
+      // Return sanitized list (without token hashes)
+      const sanitized = tokens.map(t => ({
+        id: t.id,
+        name: t.name,
+        abilities: JSON.parse(t.abilities || '["*"]'),
+        created_at: t.created_at,
+        expires_at: t.expires_at,
+        last_used_at: t.last_used_at,
+        is_expired: t.is_expired
+      }));
+
+      return res.status(200).json({
+        status: 'success',
+        tokens: sanitized
+      });
+    } catch (error) {
+      console.error('API tokens list error:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to retrieve tokens.'
       });
     }
   }

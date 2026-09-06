@@ -2,6 +2,20 @@ const fs = require('fs');
 const path = require('path');
 
 /**
+ * Escape HTML special characters to prevent XSS attacks.
+ * Must be applied to ALL user-controlled strings rendered into HTML.
+ */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
    * Levenshtein Distance Calculator for Variable Suggestions
    */
 function levenshtein(a, b) {
@@ -131,6 +145,16 @@ module.exports = (err, req, res, next) => {
     });
   }
 
+  // 2. In production: serve a clean, safe error page — no debug info exposed
+  if (process.env.NODE_ENV === 'production') {
+    res.status(statusCode);
+    try {
+      return res.render('errors/500', { title: '500 - Server Error', layout: false });
+    } catch (_) {
+      return res.send(`<!DOCTYPE html><html><head><title>Server Error</title></head><body style="font-family:sans-serif;text-align:center;padding:60px"><h1>500 — Internal Server Error</h1><p>Something went wrong. Please try again later.</p></body></html>`);
+    }
+  }
+
   // 2. Perform Intelligent Suggestions & Code View Analysis
   const codeContext = getCodeContext(error.file, error.line);
   const possibleCauses = [];
@@ -167,7 +191,7 @@ module.exports = (err, req, res, next) => {
     stackoverflow: `https://stackoverflow.com/search?q=${encodeURIComponent('NodeJS ' + error.message)}`
   };
 
-  // Render a highly aesthetic terminal-styled debug block
+  // 3. Development only: render intelligent debug page (NEVER shown in production)
   res.status(err.status || 500);
   res.send(`
     <!DOCTYPE html>
@@ -199,7 +223,7 @@ module.exports = (err, req, res, next) => {
       <div class="error-container">
         
         <div class="header">
-          <h2 class="error-type">🚨 ${error.type} Caught</h2>
+          <h2 class="error-type">🚨 ${escapeHtml(error.type)} Caught</h2>
           <div>
             <a href="${searchLinks.google}" target="_blank" class="search-btn" style="background: #4285F4;">🔍 Search Google</a>
             <a href="${searchLinks.stackoverflow}" target="_blank" class="search-btn" style="background: #F48024;">🥞 Stack Overflow</a>
@@ -207,14 +231,14 @@ module.exports = (err, req, res, next) => {
         </div>
 
         <div class="meta-info">
-          <strong>Message:</strong> ${error.message}<br>
-          <strong>File:</strong> ${error.file} (Line ${error.line})
+          <strong>Message:</strong> ${escapeHtml(error.message)}<br>
+          <strong>File:</strong> ${escapeHtml(error.file)} (Line ${escapeHtml(String(error.line))})
         </div>
 
         ${codeContext ? `
           <div class="code-box">
             <strong style="color: #cbd5e1; display: block; margin-bottom: 10px;">💻 Code Preview:</strong>
-            <pre style="margin: 0; white-space: pre-wrap;">${codeContext.replace(/>>>\s*(\d+):(.*)/g, (m, lineNum, code) => `<span class="code-highlight"> >>> ${lineNum}:${code}</span>`)}</pre>
+            <pre style="margin: 0; white-space: pre-wrap;">${escapeHtml(codeContext).replace(/&gt;&gt;&gt;\s*(\d+):(.*)/g, (m, lineNum, code) => `<span class="code-highlight"> &gt;&gt;&gt; ${lineNum}:${code}</span>`)}</pre>
           </div>
         ` : ''}
 
@@ -222,8 +246,8 @@ module.exports = (err, req, res, next) => {
           <div class="suggestions-box">
             <h3 class="suggestions-title">💡 NodeFlow Intelligent Suggestions:</h3>
             <ul class="suggestions-list">
-              ${autoFix ? `<li style="color: #f43f5e; font-weight: bold; margin-bottom: 10px; list-style-type: '🚀 ';">${autoFix.suggestion}</li>` : ''}
-              ${possibleCauses.map(cause => `<li>${cause}</li>`).join('')}
+              ${autoFix ? `<li style="color: #f43f5e; font-weight: bold; margin-bottom: 10px; list-style-type: '🚀 '">${escapeHtml(autoFix.suggestion)}</li>` : ''}
+              ${possibleCauses.map(cause => `<li>${escapeHtml(cause)}</li>`).join('')}
               <li>Verify variable scoping, imports, or SQL schemas in config files.</li>
             </ul>
           </div>
@@ -231,7 +255,7 @@ module.exports = (err, req, res, next) => {
 
         <div class="stack-trace">
           <span class="stack-title">📋 Backtrace:</span>
-          <pre style="margin: 0; white-space: pre-wrap;">${error.stack}</pre>
+          <pre style="margin: 0; white-space: pre-wrap;">${escapeHtml(error.stack)}</pre>
         </div>
 
         <div class="env-snapshot">
@@ -239,17 +263,17 @@ module.exports = (err, req, res, next) => {
           
           <details class="env-details">
             <summary>HTTP Headers (${Object.keys(req.headers).length})</summary>
-            <pre style="margin-top: 10px; color: #94a3b8; font-size: 12px;">${JSON.stringify(req.headers, null, 2)}</pre>
+            <pre style="margin-top: 10px; color: #94a3b8; font-size: 12px;">${escapeHtml(JSON.stringify(req.headers, null, 2))}</pre>
           </details>
 
           <details class="env-details">
             <summary>Query Parameters (${Object.keys(req.query).length})</summary>
-            <pre style="margin-top: 10px; color: #94a3b8; font-size: 12px;">${JSON.stringify(req.query, null, 2)}</pre>
+            <pre style="margin-top: 10px; color: #94a3b8; font-size: 12px;">${escapeHtml(JSON.stringify(req.query, null, 2))}</pre>
           </details>
 
           <details class="env-details">
             <summary>Request Body (${Object.keys(req.body || {}).length})</summary>
-            <pre style="margin-top: 10px; color: #94a3b8; font-size: 12px;">${JSON.stringify(req.body || {}, null, 2)}</pre>
+            <pre style="margin-top: 10px; color: #94a3b8; font-size: 12px;">${escapeHtml(JSON.stringify(req.body || {}, null, 2))}</pre>
           </details>
         </div>
 

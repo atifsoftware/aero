@@ -7,11 +7,11 @@ const baseOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'NodeFlow Enterprise API Explorer',
+      title: 'Aero Enterprise API Explorer',
       version: '1.0.0',
       description: `
-### 🚀 Welcome to the NodeFlow Enterprise API Portal
-This API documentation is **automatically generated** from the Express 4 MVC router stack and synchronized with manual OpenAPI annotations.
+### 🚀 Welcome to the Aero Enterprise API Portal
+This API documentation is **automatically generated** from the Express 5 MVC router stack and synchronized with manual OpenAPI annotations.
 
 #### 🔑 Authentication
 Protected endpoints require a **Bearer Token** (Personal Access Token or JWT).
@@ -19,10 +19,10 @@ Click the **Authorize 🔓** button below and enter:
 \`\`\`text
 Bearer <YOUR_ACCESS_TOKEN>
 \`\`\`
-*(Tip: In NodeFlow, you can obtain a token via \`POST /api/login\` or by running \`node cli.js\`)*
+*(Tip: In Aero MVC, you can obtain a token via \`POST /api/login\` or by running \`node cli.js\`)*
       `,
       contact: {
-        name: 'NodeFlow Engineering Team',
+        name: 'Aero Engineering Team',
         url: 'http://localhost:3000',
       },
       license: {
@@ -32,8 +32,8 @@ Bearer <YOUR_ACCESS_TOKEN>
     },
     servers: [
       {
-        url: process.env.APP_URL || `http://localhost:${process.env.PORT || 3001}`,
-        description: 'Active NodeFlow Backend Server'
+        url: process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`,
+        description: 'Active Aero Backend Server'
       },
       {
         url: 'http://localhost:3000',

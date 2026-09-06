@@ -2,6 +2,14 @@ const TestRunner = require('../core/testRunner');
 const DB = require('../config/db');
 
 TestRunner.register('Settings DB Persistence & Cache Integrity', async (assert) => {
+  await DB.query(`
+    CREATE TABLE IF NOT EXISTS \`settings\` (
+      \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`setting_key\` VARCHAR(255) UNIQUE NOT NULL,
+      \`setting_value\` TEXT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
   // Save current values to restore later
   const originalRows = await DB.table('settings').get();
   const backup = {};
@@ -54,5 +62,9 @@ TestRunner.register('Settings DB Persistence & Cache Integrity', async (assert) 
 
   // Verify restore
   const restoredName = await DB.table('settings').where('setting_key', 'name').first();
-  assert.strictEqual(restoredName.setting_value, backup['name'] || '', 'Name successfully restored.');
+  if (backup['name'] !== undefined) {
+    assert.strictEqual(restoredName?.setting_value, backup['name'], 'Name successfully restored.');
+  } else {
+    assert.strictEqual(restoredName, null, 'Name deleted as it did not exist prior.');
+  }
 });

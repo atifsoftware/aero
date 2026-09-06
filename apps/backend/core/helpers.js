@@ -9,6 +9,10 @@ global.Flash = Flash;
 global.Gate = require('./Gate');
 global.ApiResource = require('./ApiResource');
 global.Queue = require('./Queue');
+global.Throttle = require('./Throttle');
+global.Mailer = require('./Mailer');
+global.Sms = require('./Sms');
+global.Notification = require('./Notification');
 
 /**
  * NodeFlow Global Helper Functions
@@ -298,3 +302,34 @@ global.viteAsset = function(path = '') {
   const file = mapped ? mapped.file : cleanPath;
   return `/dist/${file}`;
 };
+
+/**
+  * Quick Mail Sender Helper
+  * @param {string|string[]} to
+  * @param {string} subject
+  * @param {string} [html]
+  * @param {string} [text]
+  */
+global.sendMail = async function(to, subject, html = '', text = '') {
+  return await global.Mailer.send({ to, subject, html, text });
+};
+
+/**
+  * Quick SMS Sender Helper
+  * @param {string} to
+  * @param {string} message
+  * @param {'twilio'|'webhook'|'mock'} [provider]
+  */
+global.sendSms = async function(to, message, provider) {
+  return await global.Sms.send({ to, message, provider });
+};
+
+/**
+  * Multi-Channel Notification Helper
+  * @param {any} notifiable
+  * @param {import('./Notification').BaseNotification} notification
+  */
+global.notify = async function(notifiable, notification) {
+  return await global.Notification.send(notifiable, notification);
+};
+

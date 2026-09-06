@@ -1,17 +1,17 @@
-# 🚀 NodeFlow Framework — Supercharged Core Guide
+# 🚀 Aero Framework — Supercharged Core Guide
 
-**NodeFlow** is a high-performance, lightweight Enterprise MVC Framework for **Node.js (Express 4)** with **Custom Fluent Query Builder (`config/db.js`)**, **Raw SQL**, **Redis Hybrid Cache**, **MySQL Persistent Queue**, and **Google Gemini AI**.
+**Aero** is a high-performance, ultra-lightweight Enterprise MVC Framework for **Node.js (Express 5)** with **Custom Fluent Query Builder (`config/db.js`)**, **Raw SQL**, **Redis Hybrid Cache**, **MySQL Persistent Queue**, **Multi-Channel Notifications**, **RFC Rate Limiting**, and **Google Gemini AI**.
 
 ---
 
 ## 🏗️ Architecture Overview
 
 ```text
-NodeFlow MVC Engine
-├── app/
+Aero MVC Engine
+├── apps/backend/
 │   ├── controllers/      # Business Controllers (Vouchers, Customers, HR, etc.)
-│   ├── core/             # Framework Core (DB, Cache, Queue, Validator, Logger, Model)
-│   ├── middlewares/      # Request Interceptors (validate, apiResponse, auth, apiCan)
+│   ├── core/             # Framework Core (DB, Cache, Queue, Validator, Logger, Model, Throttle, Mailer)
+│   ├── middlewares/      # Request Interceptors (validate, apiResponse, auth, apiCan, apiTokenAuth)
 │   ├── models/           # Active Record Models
 │   ├── services/         # Integrations (Gemini AI, ImageProcessor)
 │   └── jobs/             # Asynchronous Queue Jobs
@@ -24,6 +24,8 @@ NodeFlow MVC Engine
 ├── storage/
 │   ├── cache/            # File-based cache fallback
 │   └── logs/             # Correlated error & application logs
+├── types/
+│   └── index.d.ts        # TypeScript / JSDoc Type Definitions
 ├── cli.js                # Interactive Command-Line Interface 3.0
 ├── docker-compose.yml    # Full-Stack Multi-Container Orchestration
 └── server.js             # Express Engine Entrypoint
@@ -33,10 +35,10 @@ NodeFlow MVC Engine
 
 ## 🗄️ 1. Database & Fluent Query Builder (`config/db.js`)
 
-NodeFlow's QueryBuilder allows writing elegant, SQL-injection-safe queries while retaining the full speed of MySQL.
+Aero's QueryBuilder allows writing elegant, SQL-injection-safe queries while retaining the full speed of MySQL.
 
 ### Dynamic Connection & Auto-Database Creation
-NodeFlow dynamically parses `DATABASE_URL` (e.g. `mysql://root:pass@localhost:3306/my_db`) or discrete `DB_*` environment variables. On boot, it automatically runs `CREATE DATABASE IF NOT EXISTS` so fresh environments launch without manual phpMyAdmin setup.
+Aero dynamically parses `DATABASE_URL` (e.g. `mysql://root:pass@localhost:3306/my_db`) or discrete `DB_*` environment variables. On boot, it automatically runs `CREATE DATABASE IF NOT EXISTS` so fresh environments launch without manual phpMyAdmin setup.
 
 ### Basic Queries
 ```javascript
@@ -88,9 +90,9 @@ Queries exceeding `SLOW_QUERY_THRESHOLD_MS` (default: `100ms`) are automatically
 
 ## ⚡ 2. High-Performance Hybrid Cache (`app/core/Cache.js`)
 
-NodeFlow features a **Hybrid Caching Engine**:
+Aero features a **Hybrid Caching Engine**:
 - **Redis (`ioredis`)**: Automatically utilized when Redis is configured and reachable.
-- **Zero-Downtime Fallback**: If Redis is not running, NodeFlow automatically falls back to local file-based JSON caching in `storage/cache/` without crashing.
+- **Zero-Downtime Fallback**: If Redis is not running, Aero automatically falls back to local file-based JSON caching in `storage/cache/` without crashing.
 
 ```javascript
 const Cache = require('./app/core/Cache');
@@ -115,7 +117,67 @@ await Cache.clear();
 
 ---
 
-## 📨 3. Persistent Background Queue & Failed Jobs (`app/core/Queue.js`)
+## 🚦 3. RFC-Compliant Rate Limiting (`core/Throttle.js`)
+
+Aero provides route-level rate limiting using distributed Redis or in-memory fallback with RFC-6585/IETF draft headers:
+
+```javascript
+const Throttle = require('./core/Throttle');
+
+// Pre-built presets
+router.post('/login', Throttle.auth(), AuthController.login);      // 5 requests / minute
+router.use('/api', Throttle.api());                                // 120 requests / minute
+router.post('/checkout', Throttle.strict(), OrderController.store); // 10 requests / minute
+
+// Custom route rate limiting
+router.post('/export', Throttle.make({ max: 3, windowMs: 60000, message: 'Too many export requests' }));
+```
+
+---
+
+## 🔑 4. Personal Access Tokens (`core/HasApiTokens.js`)
+
+Laravel Sanctum-inspired secure token authentication with lifecycle management:
+- SHA-256 encrypted tokens (`aero_pat_...`)
+- Expiry duration parsing (`'15m'`, `'1h'`, `'7d'`, `'30d'`)
+- Token refresh (`refreshToken`) and pruning (`cleanExpiredTokens`)
+
+```javascript
+// Issue a token expiring in 30 days
+const { token, tokenRecord } = await user.createToken('Mobile App', ['*'], '30d');
+
+// Refresh an active token
+const newToken = await user.refreshToken(plainToken, '30d');
+
+// Revoke tokens
+await user.revokeToken(tokenId);
+await user.revokeAllTokens();
+```
+
+---
+
+## 📬 5. Multi-Channel Notifications (`core/Notification.js`)
+
+Dispatch messages across Email (SMTP via Nodemailer), SMS (Twilio/Webhook), and Database:
+
+```javascript
+const Notification = require('./core/Notification');
+
+await Notification.send({
+  user: currentUser,
+  channels: ['mail', 'sms'],
+  subject: 'Order Confirmed',
+  body: 'Your order #1042 is confirmed.',
+  html: '<h1>Order Confirmed</h1><p>Your order #1042 is being processed.</p>'
+});
+
+// Or dispatch asynchronously via the background queue
+await Notification.sendQueued({ user, channels: ['mail'], subject: 'Invoice' });
+```
+
+---
+
+## 📨 6. Persistent Background Queue & Failed Jobs (`app/core/Queue.js`)
 
 Run heavy operations (e.g. emails, PDF generation, data processing) asynchronously in the background.
 
@@ -125,7 +187,7 @@ const Queue = require('./app/core/Queue');
 const SendWelcomeEmail = require('./app/jobs/SendWelcomeEmail');
 
 // Dispatch job to default queue
-await Queue.dispatch(new SendWelcomeEmail({ userId: 1, email: 'admin@nodeflow.com' }));
+await Queue.dispatch(new SendWelcomeEmail({ userId: 1, email: 'admin@aeromvc.io' }));
 
 // Dispatch with delay (e.g. 60 seconds)
 await Queue.dispatch(new SendWelcomeEmail(payload), 'high_priority', 60);
@@ -140,12 +202,9 @@ node cli.js 12
 node -e "new (require('./app/core/QueueWorker'))().work();"
 ```
 
-### Failed Jobs Archival
-When a job exceeds its maximum attempts (`tries = 3`), it is automatically moved to the `failed_jobs` table along with its stack trace and timestamp. You can inspect and retry failed jobs anytime via `cli.js` (Option 15 & 16).
-
 ---
 
-## 🛡️ 4. Declarative Request Validation (`app/middlewares/validate.js`)
+## 🛡️ 7. Declarative Request Validation (`app/middlewares/validate.js`)
 
 Validate requests effortlessly with declarative middleware:
 
@@ -159,12 +218,10 @@ router.post('/expenses', validate({
   note: 'string|max:255'
 }), VoucherController.createExpense);
 ```
-- For API clients: Intercepts invalid requests and responds with standard `HTTP 422 Unprocessable Entity` containing field errors in Bengali/English.
-- For web sessions: Automatically stores flash errors and old input and redirects back.
 
 ---
 
-## 📡 5. Unified API Responses (`res.success`, `res.error`, `res.paginate`)
+## 📡 8. Unified API Responses (`res.success`, `res.error`, `res.paginate`)
 
 Every route handler has access to standardized response helpers:
 
@@ -180,43 +237,17 @@ const paginated = await DB.table('users').paginate(req.query.page, 15);
 return res.paginate(paginated);
 ```
 
-Example JSON output:
-```json
-{
-  "status": "success",
-  "message": "Operation completed successfully",
-  "data": { ... },
-  "meta": {
-    "timestamp": "2026-09-06T15:20:00.000Z",
-    "execution_time_ms": 12
-  }
-}
-```
-
 ---
 
-## 🤖 6. Google Gemini AI Engine (`app/services/Gemini.js` & `AiController.js`)
+## 🤖 9. Google Gemini AI Engine (`app/services/Gemini.js` & `AiController.js`)
 
 Native HTTPS communication with Google Gemini Flash:
-
-### Endpoints
 - `POST /api/ai/ask`: Interactive assistant query with optional context.
 - `POST /api/ai/summarize`: Automated business intelligence and KPI summary.
 
-```javascript
-const Gemini = require('./app/services/Gemini');
-const gemini = new Gemini();
-
-// Ask questions with context
-const answer = await gemini.askAssistant('How to optimize our inventory?', currentStockData);
-
-// Summarize financial KPIs
-const summary = await gemini.summarizeMetrics(todayMetrics);
-```
-
 ---
 
-## 🐳 7. Docker & DevOps Orchestration
+## 🐳 10. Docker & DevOps Orchestration
 
 Run the entire stack (Node.js + MySQL 8 + Redis + phpMyAdmin) in one command:
 
@@ -231,7 +262,7 @@ docker compose up -d
 
 ---
 
-## 💻 8. Interactive CLI Tool 3.0 (`node cli.js`)
+## 💻 11. Interactive CLI Tool 3.0 (`node cli.js`)
 
 Run `node cli.js` to access 18 interactive developer commands:
 - **1-3**: Database Setup, Seed, & Table Browser

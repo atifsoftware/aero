@@ -1,8 +1,8 @@
 {
-  "name": "nodeflow-monorepo",
+  "name": "aero-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "NodeFlow - Enterprise Express 5 MVC & Next.js 14 Full-Stack Monorepo",
+  "description": "Aero MVC - Enterprise Express 5 MVC & Next.js 14 Full-Stack Monorepo",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -35,7 +35,7 @@
     "mysql",
     "framework"
   ],
-  "author": "NodeFlow Developers",
+  "author": "Aero Developers",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.22.0",

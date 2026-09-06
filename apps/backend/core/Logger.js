@@ -3,7 +3,7 @@ const path = require('path');
 const requestContext = require('./RequestContext');
 
 /**
- * Advanced Logging System for NodeFlow
+ * Advanced Logging System for Aero MVC
  * Provides structured logging with levels and outputs, modeled after NovaFlow.
  */
 class Logger {
@@ -100,7 +100,7 @@ class Logger {
    * Emit system alert for critical issues
    */
   static sendAlert(level, message, context) {
-    console.error(`CRITICAL NODEFLOW ALERT: ${level.toUpperCase()} - ${message}`, context);
+    console.error(`CRITICAL AERO ALERT: ${level.toUpperCase()} - ${message}`, context);
   }
 
   /**

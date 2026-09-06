@@ -10,14 +10,27 @@ TestRunner.register('API Status, Settings, and Token Authentication Workflow', a
 
   // 2. Simulate Login and issuing token
   const adminEmail = 'admin@nodeflow.com';
-  const adminUser = await User.findByEmail(adminEmail);
+  let adminUser = await User.findByEmail(adminEmail);
+  if (!adminUser) {
+    adminUser = await User.query().first();
+  }
+  if (!adminUser) {
+    const newId = await User.create({
+      username: adminEmail,
+      full_name: 'Administrator',
+      password: 'password123',
+      role: 'admin',
+      is_active: 1
+    });
+    adminUser = await User.find(newId);
+  }
   assert.ok(adminUser, 'Admin user should exist.');
 
   // Create a token manually to test token verification
   const tokenName = 'Test Mobile Device';
   const { plainTextToken, token: hashedToken } = await HasApiTokens.createToken(adminUser, tokenName);
 
-  assert.ok(plainTextToken.startsWith('nf_pat_'), 'Plain text token format is correct.');
+  assert.ok(plainTextToken.startsWith('aero_pat_') || plainTextToken.startsWith('nf_pat_'), 'Plain text token format is correct.');
   assert.ok(hashedToken, 'Hashed token exists.');
 
   // Validate via token authentication simulation

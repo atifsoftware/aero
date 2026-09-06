@@ -58,13 +58,30 @@ class User extends Model {
     return super.set(key, value);
   }
 
+  static _mapAttributes(userData) {
+    const data = { ...userData };
+    if (data.name !== undefined && data.full_name === undefined) {
+      data.full_name = data.name;
+      delete data.name;
+    }
+    if (data.email !== undefined && data.username === undefined) {
+      data.username = data.email;
+      delete data.email;
+    }
+    if (data.status !== undefined && data.is_active === undefined) {
+      data.is_active = data.status;
+      delete data.status;
+    }
+    return data;
+  }
+
   /**
-   * Create a new user with automatic password hashing
+   * Create a new user with automatic password hashing and attribute mapping
    * @param {object} userData 
    * @returns {Promise<number>} Inserted user's ID
    */
   static async create(userData) {
-    const data = { ...userData };
+    const data = this._mapAttributes(userData);
     if (data.password) {
       data.password = this.hashPassword(data.password);
     }
@@ -75,7 +92,7 @@ class User extends Model {
    * Update details of an existing user
    */
   static async update(id, userData) {
-    const data = { ...userData };
+    const data = this._mapAttributes(userData);
     if (data.password) {
       data.password = this.hashPassword(data.password);
     }

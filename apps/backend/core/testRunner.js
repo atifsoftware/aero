@@ -4,7 +4,7 @@ const fs = require('fs');
 const DB = require('../config/db');
 
 /**
- * NodeFlow Micro Test Runner
+ * Aero MVC Micro Test Runner
  * A lightweight, zero-dependency assert testing framework that executes
  * all test assertions inside a database transaction, rolling back automatically.
  */
@@ -17,7 +17,7 @@ class TestRunner {
 
   static async runAll() {
     console.log('\n\x1b[36m╔════════════════════════════════════════════╗\x1b[0m');
-    console.log('\x1b[36m║          NODEFLOW AUTOMATED TESTS          ║\x1b[0m');
+    console.log('\x1b[36m║            AERO AUTOMATED TESTS            ║\x1b[0m');
     console.log('\x1b[36m╚════════════════════════════════════════════╝\x1b[0m\n');
 
     let passed = 0;
@@ -32,7 +32,7 @@ class TestRunner {
 
     if (this.tests.length === 0) {
       console.log('\x1b[33m⚠ No test cases registered in /tests directory.\x1b[0m\n');
-      return;
+      return { passed: 0, failed: 0 };
     }
 
     for (const test of this.tests) {

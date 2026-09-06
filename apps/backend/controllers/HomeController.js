@@ -8,7 +8,7 @@ class HomeController {
   static async index(req, res, next) {
     try {
       res.render('welcome', {
-        title: 'NodeFlow — High-Performance MVC Skeleton Backend',
+        title: 'Aero MVC — High-Performance MVC Skeleton Backend',
         user: req.session.user || null
       });
     } catch (error) {
@@ -56,7 +56,7 @@ class HomeController {
         .get();
 
       res.render('admin/dashboard', {
-        title: 'ড্যাশবোর্ড ওভারভিউ — NodeFlow Admin',
+        title: 'ড্যাশবোর্ড ওভারভিউ — Aero MVC Admin',
         stats: systemStats,
         logs: recentLogs
       });
