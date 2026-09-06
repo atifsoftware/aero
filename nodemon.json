@@ -1,0 +1,11 @@
+{
+  "verbose": true,
+  "ignore": [
+    "public/uploads/*",
+    "sessions/*",
+    "tests/*",
+    "database/*",
+    "node_modules/*"
+  ],
+  "ext": "js,json,ejs,html,css"
+}
