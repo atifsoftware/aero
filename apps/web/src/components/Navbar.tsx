@@ -51,14 +51,9 @@ export function Navbar() {
           <Link href="/admin" style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>
             Admin ERP
           </Link>
-          <a
-            href="http://localhost:3001/api/docs"
-            target="_blank"
-            rel="noreferrer"
-            style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}
-          >
+          <Link href="/docs" style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>
             API Docs
-          </a>
+          </Link>
           <Link href="/login" className="btn-primary" style={{ padding: '8px 18px', fontSize: '0.88rem' }}>
             Sign In
           </Link>

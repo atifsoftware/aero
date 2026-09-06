@@ -168,9 +168,9 @@ const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
 
 // Load Swagger API Documentation
-const { swaggerUi, swaggerSpec } = require('./config/swagger');
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/api/docs-json', (req, res) => {
+const { swaggerUi, swaggerSpec, swaggerCustomOptions } = require('./config/swagger');
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerCustomOptions));
+app.get(['/api/docs.json', '/api/docs-json', '/api/openapi.json'], (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
