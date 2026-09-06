@@ -1,8 +1,18 @@
-# 🚀 Aero MVC Framework
-
 <div align="center">
-  <h3>Ultra-fast, Lightweight Enterprise MVC Engine for Node.js (Express 5)</h3>
-  <p>Light as Air, Fast as Sound. High performance without the bloat.</p>
+  <img src="./assets/aero_logo.jpg" alt="Aero MVC Logo" width="180" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
+  
+  # 🚀 Aero MVC Framework
+  
+  <p><strong>Ultra-fast, Lightweight Enterprise MVC Engine for Node.js (Express 5)</strong></p>
+  <p><em>Light as Air, Fast as Sound. High performance without the bloat.</em></p>
+
+  <p>
+    <img src="https://img.shields.io/badge/version-1.0.0-blue.svg?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/badge/node-≥20-green.svg?style=flat-square" alt="Node" />
+    <img src="https://img.shields.io/badge/express-v5.2.1-orange.svg?style=flat-square" alt="Express 5" />
+    <img src="https://img.shields.io/badge/tests-17%20passed-brightgreen.svg?style=flat-square" alt="Tests" />
+    <img src="https://img.shields.io/badge/license-MIT-blueviolet.svg?style=flat-square" alt="License" />
+  </p>
 </div>
 
 ---
