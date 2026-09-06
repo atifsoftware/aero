@@ -9,6 +9,8 @@ yarn-debug.log*
 yarn-error.log*
 storage/logs/*
 !storage/logs/.gitkeep
+apps/**/storage/logs/*
+!apps/**/storage/logs/.gitkeep
 
 # Environment files
 .env
@@ -20,19 +22,32 @@ dist/
 build/
 client/dist/
 public/dist/
+.next/
+.turbo/
+.expo/
+apps/*/.next/
+apps/*/dist/
+packages/*/dist/
+*.zip
 
 # Cache directories
 storage/cache/*
 !storage/cache/.gitkeep
+apps/**/storage/cache/*
+!apps/**/storage/cache/.gitkeep
 .cache/
 
 # Session store files
 sessions/*
 !sessions/.gitkeep
+apps/**/sessions/*
+!apps/**/sessions/.gitkeep
 
 # Uploads
 public/uploads/*
 !public/uploads/.gitkeep
+apps/**/public/uploads/*
+!apps/**/public/uploads/.gitkeep
 
 # Temporary files
 scratch/

@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "NodeFlow Mobile",
+    "slug": "nodeflow-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "extra": {
+      "apiUrl": "http://localhost:3001"
+    }
+  }
+}

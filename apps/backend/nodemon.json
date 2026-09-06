@@ -7,9 +7,7 @@
     "storage/logs/*",
     "tests/*",
     "database/*",
-    "node_modules/*",
-    "apps/web/*",
-    "apps/mobile/*"
+    "node_modules/*"
   ],
   "ext": "js,json,ejs,html,css"
 }
