@@ -56,6 +56,9 @@ function showMenu() {
   console.log("21. " + colors.cyan + "Push Prisma Schema to Database (prisma:db:push)" + colors.reset);
   console.log("22. " + colors.cyan + "Run Due Scheduled Tasks (schedule:run)" + colors.reset);
   console.log("23. " + colors.cyan + "List Scheduled Tasks (schedule:list)" + colors.reset);
+  console.log("24. " + colors.green + "Create Database Backup (db:backup)" + colors.reset);
+  console.log("25. " + colors.cyan + "List Database Backups (db:backups)" + colors.reset);
+  console.log("26. " + colors.yellow + "Restore Database Backup (db:restore)" + colors.reset);
   console.log("0. " + colors.red + "Exit" + colors.reset);
   console.log("");
   
@@ -137,6 +140,18 @@ async function handleChoice(choice) {
     case 'schedule:list':
       listScheduledTasks();
       break;
+    case '24':
+    case 'db:backup':
+      await runBackup();
+      break;
+    case '25':
+    case 'db:backups':
+      listBackupsCLI();
+      break;
+    case '26':
+    case 'db:restore':
+      promptRestoreBackup();
+      return;
     case '0':
       console.log(colors.green + "\n✓ Goodbye From Aero MVC!\n" + colors.reset);
       rl.close();
@@ -912,6 +927,74 @@ function listScheduledTasks() {
   }
   console.log("");
   pause();
+}
+
+async function runBackup() {
+  console.log(colors.cyan + "\n📦 Starting Database Backup..." + colors.reset);
+  try {
+    const Backup = require('./core/Backup');
+    const res = await Backup.create({ compress: true });
+    console.log(colors.green + `✓ Backup created successfully!` + colors.reset);
+    console.log(`  File: ${colors.bold}${res.filename}${colors.reset}`);
+    console.log(`  Path: ${res.filePath}`);
+    console.log(`  Size: ${(res.sizeBytes / 1024).toFixed(2)} KB (${res.tablesCount} tables)`);
+  } catch (err) {
+    console.log(colors.red + `✗ Backup failed: ${err.message}` + colors.reset);
+  }
+  pause();
+}
+
+function listBackupsCLI() {
+  console.log(colors.cyan + "\n📂 Available Database Backups\n" + colors.reset);
+  const Backup = require('./core/Backup');
+  const list = Backup.list();
+  if (list.length === 0) {
+    console.log(colors.yellow + "No backups found in storage/backups/." + colors.reset);
+  } else {
+    list.forEach((b, idx) => {
+      console.log(`${idx + 1}. ${colors.bold}${b.filename}${colors.reset} - ${b.sizeFormatted} (${b.createdAt.toLocaleString()})`);
+    });
+  }
+  console.log("");
+  pause();
+}
+
+function promptRestoreBackup() {
+  const Backup = require('./core/Backup');
+  const list = Backup.list();
+  if (list.length === 0) {
+    console.log(colors.yellow + "\nNo backups available to restore." + colors.reset);
+    pause();
+    return;
+  }
+
+  console.log(colors.cyan + "\nSelect backup file to restore:" + colors.reset);
+  list.forEach((b, idx) => {
+    console.log(`${idx + 1}. ${b.filename} (${b.sizeFormatted})`);
+  });
+
+  rl.question(colors.yellow + "\nEnter number or filename (or press Enter to cancel): " + colors.reset, async (ans) => {
+    const choice = ans.trim();
+    if (!choice) {
+      pause();
+      return;
+    }
+
+    let targetFile = choice;
+    const num = parseInt(choice, 10);
+    if (!isNaN(num) && num >= 1 && num <= list.length) {
+      targetFile = list[num - 1].filePath;
+    }
+
+    console.log(colors.yellow + `\nRestoring from: ${targetFile}...` + colors.reset);
+    try {
+      const res = await Backup.restore(targetFile);
+      console.log(colors.green + `✓ Successfully restored ${res.statementsExecuted} SQL statements!` + colors.reset);
+    } catch (err) {
+      console.log(colors.red + `✗ Restore failed: ${err.message}` + colors.reset);
+    }
+    pause();
+  });
 }
 
 // Kickstart CLI on execute

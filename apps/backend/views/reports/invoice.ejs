@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <title>চালান / Invoice - <%= invoice.number %></title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans Bengali', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    .invoice-container {
+      max-width: 800px;
+      margin: 0 auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 32px;
+      background: #fff;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+
+    .company-info h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+
+    .company-info p {
+      color: #64748b;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .invoice-badge {
+      text-align: right;
+    }
+
+    .invoice-badge h2 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #2563eb;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .invoice-badge .inv-no {
+      font-weight: 600;
+      color: #334155;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .meta-box {
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: 6px;
+      padding: 14px 18px;
+    }
+
+    .meta-box h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .meta-box p {
+      font-size: 13px;
+      color: #1e293b;
+      line-height: 1.4;
+    }
+
+    table.items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+    }
+
+    table.items-table th {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 600;
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 12px;
+    }
+
+    table.items-table th.text-right,
+    table.items-table td.text-right {
+      text-align: right;
+    }
+
+    table.items-table th.text-center,
+    table.items-table td.text-center {
+      text-align: center;
+    }
+
+    table.items-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 13px;
+    }
+
+    table.items-table tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .summary-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+
+    .in-words-box {
+      flex: 1;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 14px;
+      margin-right: 32px;
+    }
+
+    .in-words-box .label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #166534;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .in-words-box .words-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: #14532d;
+      line-height: 1.5;
+    }
+
+    .totals-table {
+      width: 260px;
+      border-collapse: collapse;
+    }
+
+    .totals-table td {
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+
+    .totals-table tr.grand-total td {
+      border-top: 2px solid #0f172a;
+      font-weight: 700;
+      font-size: 15px;
+      color: #0f172a;
+      padding-top: 10px;
+    }
+
+    .footer-section {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px dashed #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .terms {
+      font-size: 11px;
+      color: #64748b;
+      max-width: 450px;
+      line-height: 1.4;
+    }
+
+    .signature-box {
+      text-align: center;
+      border-top: 1px solid #94a3b8;
+      width: 180px;
+      padding-top: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+      }
+      .invoice-container {
+        border: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-container">
+    <!-- Header -->
+    <div class="header-row">
+      <div class="company-info">
+        <h1><%= company.name %></h1>
+        <p><%= company.address %></p>
+        <p>ফোন: <%= company.phone %> | ইমেইল: <%= company.email %></p>
+        <% if (company.bin) { %><p>BIN / ভ্যাট নিবন্ধন নং: <%= company.bin %></p><% } %>
+      </div>
+      <div class="invoice-badge">
+        <h2>চালান / INVOICE</h2>
+        <div class="inv-no">নং: <%= invoice.number %></div>
+        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+          তারিখ: <%= invoice.date %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metadata Grid -->
+    <div class="meta-grid">
+      <div class="meta-box">
+        <h3>বিল প্রাপক (Bill To):</h3>
+        <p><strong><%= customer.name %></strong></p>
+        <% if (customer.company) { %><p><%= customer.company %></p><% } %>
+        <p><%= customer.address %></p>
+        <p>ফোন: <%= customer.phone %></p>
+      </div>
+      <div class="meta-box">
+        <h3>চালানের বিবরণ (Invoice Details):</h3>
+        <p><strong>চালান নং:</strong> <%= invoice.number %></p>
+        <p><strong>অর্ডারের তারিখ:</strong> <%= invoice.date %></p>
+        <p><strong>পরিশোধের মাধ্যম:</strong> <%= invoice.paymentMethod || 'ক্যাশ / অনলাইন' %></p>
+        <p><strong>অবস্থা:</strong> <%= invoice.status || 'পরিশোধিত (PAID)' %></p>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width: 40px;" class="text-center">#</th>
+          <th>পণ্যের বিবরণ (Description)</th>
+          <th style="width: 80px;" class="text-center">পরিমাণ (Qty)</th>
+          <th style="width: 100px;" class="text-right">দর (Unit Price)</th>
+          <th style="width: 110px;" class="text-right">মোট (Total)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% items.forEach((item, index) => { %>
+          <tr>
+            <td class="text-center"><%= index + 1 %></td>
+            <td>
+              <strong><%= item.name %></strong>
+              <% if (item.sku) { %><br><span style="font-size: 11px; color: #64748b;">SKU: <%= item.sku %></span><% } %>
+            </td>
+            <td class="text-center"><%= item.quantity %></td>
+            <td class="text-right">৳ <%= Number(item.price).toFixed(2) %></td>
+            <td class="text-right">৳ <%= Number(item.quantity * item.price).toFixed(2) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <!-- Summary & Totals -->
+    <div class="summary-section">
+      <div class="in-words-box">
+        <div class="label">কথায় (In Words):</div>
+        <div class="words-text"><%= wordsBn %></div>
+        <div style="font-size: 11px; color: #475569; margin-top: 6px; font-style: italic;">
+          <%= wordsEn %>
+        </div>
+      </div>
+
+      <table class="totals-table">
+        <tr>
+          <td>উপমোট (Subtotal):</td>
+          <td class="text-right">৳ <%= Number(summary.subtotal).toFixed(2) %></td>
+        </tr>
+        <% if (summary.discount > 0) { %>
+          <tr>
+            <td style="color: #dc2626;">ছাড় (Discount):</td>
+            <td class="text-right" style="color: #dc2626;">- ৳ <%= Number(summary.discount).toFixed(2) %></td>
+          </tr>
+        <% } %>
+        <% if (summary.tax > 0) { %>
+          <tr>
+            <td>ভ্যাট / ট্যাক্স (VAT):</td>
+            <td class="text-right">৳ <%= Number(summary.tax).toFixed(2) %></td>
+          </tr>
+        <% } %>
+        <tr class="grand-total">
+          <td>সর্বমোট (Total):</td>
+          <td class="text-right">৳ <%= Number(summary.total).toFixed(2) %></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Footer & Signatures -->
+    <div class="footer-section">
+      <div class="terms">
+        <strong>শর্তাবলী:</strong><br>
+        ১. ক্রয়কৃত পণ্য ৭ দিনের মধ্যে উপযুক্ত কারণসহ পরিবর্তনযোগ্য।<br>
+        ২. এটি একটি কম্পিউটার জেনারেটেড বিল এবং অফিসিয়াল চালানের সমতুল্য।
+      </div>
+      <div class="signature-box">
+        কর্তৃপক্ষের স্বাক্ষর<br>Authorized Signature
+      </div>
+    </div>
+  </div>
+</body>
+</html>

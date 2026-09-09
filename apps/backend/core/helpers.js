@@ -14,6 +14,13 @@ const Throttle = require('./Throttle');
 const Mailer = require('./Mailer');
 const Sms = require('./Sms');
 const Notification = require('./Notification');
+const Money = require('./Money');
+const NumberToWords = require('./NumberToWords');
+const PdfEngine = require('./Pdf');
+const DocNumber = require('./DocNumber');
+const Audit = require('./Audit');
+const Export = require('./Export');
+const Backup = require('./Backup');
 
 /**
  * Helper to sanitize HTML characters to prevent XSS attacks
@@ -385,6 +392,13 @@ const Aero = {
   Mailer,
   Sms,
   Notification,
+  Money,
+  NumberToWords,
+  Pdf: PdfEngine,
+  DocNumber,
+  Audit,
+  Export,
+  Backup,
 
   // Helper Functions
   escapeHtml,
@@ -400,6 +414,11 @@ const Aero = {
   formatDate,
   formatCurrency,
   numberToWords,
+  numberToBangla: (num) => NumberToWords.toBangla(num),
+  currencyWords: (amount, opts) => NumberToWords.toCurrencyWords(amount, opts),
+  money: (amount, currency) => new Money(amount, currency),
+  docNumber: (type, opts) => DocNumber.next(type, opts),
+  audit: (entry) => Audit.log(entry),
   isViteDevActive,
   viteAsset,
   sendMail,
@@ -425,6 +444,9 @@ const Aero = {
         formatDate,
         formatCurrency,
         numberToWords,
+        numberToBangla: (num) => NumberToWords.toBangla(num),
+        currencyWords: (amount, opts) => NumberToWords.toCurrencyWords(amount, opts),
+        money: (amount, currency) => new Money(amount, currency),
         isViteDevActive,
         viteAsset
       });

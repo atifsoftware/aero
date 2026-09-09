@@ -46,8 +46,7 @@ class TestRunner {
           // Temporarily swap DB connection for ORM query executor to match transaction connection
           DB.table = (name) => originalTable(name, trx.pool || trx); // Proxy
           DB.query = async (sql, params = []) => {
-            const res = await trx.query(sql, params);
-            return Array.isArray(res) ? res[0] : res;
+            return await trx.query(sql, params);
           };
 
           try {
