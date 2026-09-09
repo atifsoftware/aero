@@ -119,7 +119,9 @@ class VoucherController {
         where += ' AND ev.shop_id = ?';
         params.push(shopId);
       } else if (role === 'manager') {
-        where += ` AND ev.shop_id IN (${assignedShopIds.join(',')})`;
+        const placeholders = assignedShopIds.map(() => '?').join(',');
+        where += ` AND ev.shop_id IN (${placeholders})`;
+        params.push(...assignedShopIds);
       }
 
       // Total records count
@@ -409,7 +411,9 @@ class VoucherController {
         where += ' AND iv.shop_id = ?';
         params.push(shopId);
       } else if (role === 'manager') {
-        where += ` AND iv.shop_id IN (${assignedShopIds.join(',')})`;
+        const placeholders = assignedShopIds.map(() => '?').join(',');
+        where += ` AND iv.shop_id IN (${placeholders})`;
+        params.push(...assignedShopIds);
       }
 
       const countRows = await DB.query(`SELECT COUNT(*) AS total FROM tbl_income_vouchers iv WHERE ${where}`, params);

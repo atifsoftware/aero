@@ -73,9 +73,9 @@ router.get('/settings', (req, res) => {
 
 /**
  * POST /api/settings
- * Update settings in database
+ * Update settings in database (Protected: Requires admin or manage_settings permission)
  */
-router.post('/settings', async (req, res, next) => {
+router.post('/settings', apiTokenAuth, apiCan('manage_settings'), async (req, res, next) => {
   try {
     const DB = require('../config/db');
     const fields = req.body || {};
@@ -107,9 +107,9 @@ router.post('/settings', async (req, res, next) => {
 
 /**
  * GET /api/dashboard/framework-stats
- * Diagnostics and framework stats for React Admin Dashboard
+ * Diagnostics and framework stats for React Admin Dashboard (Protected: Requires Bearer Auth)
  */
-router.get('/dashboard/framework-stats', async (req, res, next) => {
+router.get('/dashboard/framework-stats', apiTokenAuth, async (req, res, next) => {
   try {
     const os = require('os');
     const DB = require('../config/db');
@@ -357,9 +357,10 @@ router.post('/templates', apiTokenAuth, TemplateController.store);
 router.put('/templates/:id', apiTokenAuth, TemplateController.update);
 router.delete('/templates/:id', apiTokenAuth, TemplateController.destroy);
 
-// AI Intelligence APIs
+// AI Intelligence APIs (Rate limited: max 20 requests/minute to prevent API quota exhaustion)
 const AiController = require('../controllers/AiController');
-router.post('/ai/ask', apiTokenAuth, AiController.ask);
-router.post('/ai/summarize', apiTokenAuth, AiController.summarize);
+const aiThrottle = Throttle.create({ max: 20, windowMs: 60000, message: 'AI request rate limit reached. Please wait a minute before making further queries.' });
+router.post('/ai/ask', aiThrottle, apiTokenAuth, AiController.ask);
+router.post('/ai/summarize', aiThrottle, apiTokenAuth, AiController.summarize);
 
 module.exports = router;

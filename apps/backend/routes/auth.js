@@ -1,6 +1,7 @@
 const express = require('express');
 const ApiAuthController = require('../controllers/ApiAuthController');
 const { auth } = require('../middlewares/auth');
+const Throttle = require('../core/Throttle');
 
 const router = express.Router();
 
@@ -114,8 +115,8 @@ router.get('/me', ApiAuthController.me);
  *       403:
  *         description: Forbidden. Account is inactive.
  */
-router.post('/session-login', ApiAuthController.login);
-router.post('/login', ApiAuthController.login);
+router.post('/session-login', Throttle.auth(), ApiAuthController.login);
+router.post('/login', Throttle.auth(), ApiAuthController.login);
 
 /**
  * @swagger

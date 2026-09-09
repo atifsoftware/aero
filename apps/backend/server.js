@@ -71,15 +71,80 @@ app.use((req, res, next) => {
   next();
 });
 
-// Load Global Helpers (PHP-like global functions)
-require('./core/helpers');
+// Initialize Aero Application Container & View Helpers (binds helpers cleanly to app.locals)
+const Aero = require('./core/helpers');
+Aero.bindLocals(app);
 
-// Initialize Session File Store directory setup
-const sessionStore = new FileStore({
-  path: path.join(__dirname, 'sessions'),
-  ttl: 86400, // 1 day
-  logFn: () => { } // Suppress console logs on session files creation
-});
+// Initialize Session Store (Redis in Production/Docker if available, FileStore fallback)
+let sessionStore;
+if (process.env.REDIS_HOST) {
+  try {
+    const Redis = require('ioredis');
+    const redisClient = new Redis({
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD || undefined,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false
+    });
+
+    class RedisSessionStore extends session.Store {
+      constructor(client, ttl = 86400) {
+        super();
+        this.client = client;
+        this.ttl = ttl;
+      }
+      async get(sid, fn) {
+        try {
+          const data = await this.client.get(`sess:${sid}`);
+          if (!data) return fn(null, null);
+          return fn(null, JSON.parse(data));
+        } catch (err) {
+          return fn(err);
+        }
+      }
+      async set(sid, sess, fn) {
+        try {
+          await this.client.set(`sess:${sid}`, JSON.stringify(sess), 'EX', this.ttl);
+          return fn && fn(null);
+        } catch (err) {
+          return fn && fn(err);
+        }
+      }
+      async destroy(sid, fn) {
+        try {
+          await this.client.del(`sess:${sid}`);
+          return fn && fn(null);
+        } catch (err) {
+          return fn && fn(err);
+        }
+      }
+      async touch(sid, sess, fn) {
+        try {
+          await this.client.expire(`sess:${sid}`, this.ttl);
+          return fn && fn(null);
+        } catch (err) {
+          return fn && fn(err);
+        }
+      }
+    }
+
+    sessionStore = new RedisSessionStore(redisClient);
+  } catch (err) {
+    sessionStore = new FileStore({
+      path: path.join(__dirname, 'sessions'),
+      ttl: 86400,
+      logFn: () => { }
+    });
+  }
+} else {
+  sessionStore = new FileStore({
+    path: path.join(__dirname, 'sessions'),
+    ttl: 86400,
+    logFn: () => { }
+  });
+}
 
 // Configure EJS view engine
 app.set('views', path.join(__dirname, 'views'));
@@ -110,7 +175,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 app.use(fileUpload());
 
-// Set up express-session with FileStore
+// Set up express-session with secure cookie flags and resilient store
 app.use(session({
   store: sessionStore,
   secret: process.env.SESSION_SECRET || 'aero_default_secret_key_123',
@@ -118,7 +183,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     maxAge: 1000 * 60 * 60 * 24, // 24 hours
-    secure: false // Set to true if running on HTTPS
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production' ? 'auto' : false
   }
 }));
 

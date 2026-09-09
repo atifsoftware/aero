@@ -22,11 +22,11 @@ class Gemini {
    */
   generateResponse(prompt, systemInstruction = '') {
     return new Promise((resolve) => {
-      if (!this.apiKey || this.apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
-        return resolve('Error: GEMINI_API_KEY is missing. Please configure it in your .env file.');
+      if (!this.apiKey || this.apiKey.toLowerCase().includes('gemini_api_key')) {
+        return resolve('Error: GEMINI_API_KEY is missing or using a placeholder. Please configure a valid key in your .env file.');
       }
 
-      const url = `${this.apiUrl}?key=${this.apiKey}`;
+      const url = this.apiUrl;
       
       const payload = {
         contents: [
@@ -55,7 +55,8 @@ class Gemini {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(dataString)
+          'Content-Length': Buffer.byteLength(dataString),
+          'x-goog-api-key': this.apiKey
         }
       };
 

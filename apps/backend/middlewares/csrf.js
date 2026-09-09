@@ -42,8 +42,17 @@ module.exports = (req, res, next) => {
     req.headers['x-csrf-token'] || 
     req.headers['x-xsrf-token'];
 
-  // 6. Validate the token
-  if (!clientToken || clientToken !== req.session.csrfToken) {
+  // 6. Validate the token using constant-time comparison (prevents timing attacks)
+  let isValid = false;
+  if (clientToken && typeof clientToken === 'string' && req.session.csrfToken) {
+    const clientBuffer = Buffer.from(clientToken, 'utf8');
+    const sessionBuffer = Buffer.from(req.session.csrfToken, 'utf8');
+    if (clientBuffer.length === sessionBuffer.length) {
+      isValid = crypto.timingSafeEqual(clientBuffer, sessionBuffer);
+    }
+  }
+
+  if (!isValid) {
     const err = new Error('CSRF security token verification failed or expired. Action blocked for security.');
     err.status = 403;
     err.name = 'CSRF Security Violation';

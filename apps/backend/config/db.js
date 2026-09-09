@@ -121,6 +121,24 @@ class QueryBuilder {
     this._groupBy = null;
     this._having = null;
     this._havingBindings = [];
+    this._allowMassDelete = false;
+    this._allowMassUpdate = false;
+  }
+
+  /**
+   * Explicitly allow mass deletion without a WHERE clause
+   */
+  allowMassDelete() {
+    this._allowMassDelete = true;
+    return this;
+  }
+
+  /**
+   * Explicitly allow mass update without a WHERE clause
+   */
+  allowMassUpdate() {
+    this._allowMassUpdate = true;
+    return this;
   }
 
   select(fields, ...more) {
@@ -243,11 +261,32 @@ class QueryBuilder {
     return this.orWhere(column, 'LIKE', value);
   }
 
+  /**
+   * Add a raw WHERE clause with parameterized bindings.
+   * 
+   * ⚠️ SECURITY WARNING: NEVER concatenate untrusted user input directly into the `sql` string!
+   * Always use placeholders (?) and pass values via `bindings` array to prevent SQL Injection.
+   * 
+   * Example:
+   *   // SAFE:
+   *   DB.table('users').whereRaw('status = ? AND score > ?', [status, minScore]);
+   *   // DANGEROUS:
+   *   DB.table('users').whereRaw(`status = '${status}'`); // ❌ Vulnerable to SQLi
+   * 
+   * @param {string} sql Raw SQL condition with ? placeholders
+   * @param {Array} [bindings] Parameter values for placeholders
+   */
   whereRaw(sql, bindings = []) {
     this._addWhere('AND', sql, bindings);
     return this;
   }
 
+  /**
+   * Add a raw OR WHERE clause with parameterized bindings.
+   * 
+   * ⚠️ SECURITY WARNING: NEVER concatenate untrusted user input directly into the `sql` string!
+   * Always use placeholders (?) and pass values via `bindings` array to prevent SQL Injection.
+   */
   orWhereRaw(sql, bindings = []) {
     this._addWhere('OR', sql, bindings);
     return this;
@@ -379,8 +418,37 @@ class QueryBuilder {
     let sql = this.toSql();
     const bindings = this.getBindings();
     bindings.forEach(val => {
-      const formatted = typeof val === 'string' ? `'${val.replace(/'/g, "\\'")}'` : val;
-      sql = sql.replace('?', formatted);
+      let formatted;
+      if (val === null || val === undefined) {
+        formatted = 'NULL';
+      } else if (typeof val === 'number') {
+        formatted = String(val);
+      } else if (typeof val === 'boolean') {
+        formatted = val ? '1' : '0';
+      } else if (val instanceof Date) {
+        formatted = `'${val.toISOString().slice(0, 19).replace('T', ' ')}'`;
+      } else {
+        const escaped = String(val)
+          .replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) => {
+            switch (char) {
+              case '\0': return '\\0';
+              case '\x08': return '\\b';
+              case '\x09': return '\\t';
+              case '\x1a': return '\\z';
+              case '\n': return '\\n';
+              case '\r': return '\\r';
+              case '"':
+              case "'":
+              case '\\':
+              case '%':
+                return '\\' + char;
+              default:
+                return char;
+            }
+          });
+        formatted = `'${escaped}'`;
+      }
+      sql = sql.replace('?', () => formatted);
     });
     return sql;
   }
@@ -529,6 +597,8 @@ class QueryBuilder {
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
     if (whereSql) {
       sql += ` WHERE ${whereSql}`;
+    } else if (!this._allowMassUpdate) {
+      throw new Error(`Unsafe SQL operation: update() requires at least one WHERE condition to prevent accidental mass table updates. Call allowMassUpdate() if this was intentional.`);
     }
 
     const executor = this._connection || pool;
@@ -544,6 +614,8 @@ class QueryBuilder {
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
     if (whereSql) {
       sql += ` WHERE ${whereSql}`;
+    } else if (!this._allowMassDelete) {
+      throw new Error(`Unsafe SQL operation: delete() requires at least one WHERE condition to prevent accidental table truncation. Call allowMassDelete() or truncate() if this was intentional.`);
     }
 
     const executor = this._connection || pool;
@@ -551,6 +623,15 @@ class QueryBuilder {
     const [result] = await executor.query(sql, whereBindings);
     auditQueryPerformance(sql, whereBindings, Date.now() - start);
     return result.affectedRows;
+  }
+
+  async truncate() {
+    const sql = `TRUNCATE TABLE \`${this._table}\``;
+    const executor = this._connection || pool;
+    const start = Date.now();
+    const [result] = await executor.query(sql);
+    auditQueryPerformance(sql, [], Date.now() - start);
+    return result;
   }
 
   async count() {

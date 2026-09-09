@@ -178,6 +178,7 @@ const Throttle = {
    * @param {ThrottleOptions} [options]
    */
   custom: throttle,
+  create: throttle,
 
   /**
    * Strict rate limiting for authentication (Login, Register, Token Refresh)

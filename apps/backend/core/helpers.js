@@ -1,46 +1,65 @@
+// @ts-check
+const crypto = require('crypto');
 const requestContext = require('./RequestContext');
 const Flash = require('./Flash');
 
-// Bind Core Libraries globally to allow require-free, clean access across controllers & models
-global.DB = require('../config/db');
-global.Cache = require('./Cache');
-global.Logger = require('./Logger');
-global.Flash = Flash;
-global.Gate = require('./Gate');
-global.ApiResource = require('./ApiResource');
-global.Queue = require('./Queue');
-global.Throttle = require('./Throttle');
-global.Mailer = require('./Mailer');
-global.Sms = require('./Sms');
-global.Notification = require('./Notification');
+// Core Service Singletons
+const DB = require('../config/db');
+const Cache = require('./Cache');
+const Logger = require('./Logger');
+const Gate = require('./Gate');
+const ApiResource = require('./ApiResource');
+const Queue = require('./Queue');
+const Throttle = require('./Throttle');
+const Mailer = require('./Mailer');
+const Sms = require('./Sms');
+const Notification = require('./Notification');
 
 /**
- * Aero Global Helper Functions
- * Attaches convenient utility functions to the global scope, modeled after NovaFlow.
+ * Helper to sanitize HTML characters to prevent XSS attacks
+ * @param {any} str
+ * @returns {string}
  */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-// 1. env helper
-global.env = function(key, defaultValue = null) {
+/**
+ * 1. env helper
+ * @param {string} key
+ * @param {any} [defaultValue=null]
+ */
+function env(key, defaultValue = null) {
   return process.env[key] !== undefined ? process.env[key] : defaultValue;
-};
+}
 
-// 2. base_url, url, and asset helpers
-global.base_url = function(path = '') {
+/**
+ * 2. base_url, url, and asset helpers
+ */
+function base_url(path = '') {
   const base = process.env.BASE_URL || '';
   return base + '/' + String(path).replace(/^\/+/, '');
-};
+}
 
-global.url = function(path = '') {
+function url(path = '') {
   return '/' + String(path).replace(/^\/+/, '');
-};
+}
 
-global.asset = function(path = '') {
+function asset(path = '') {
   return '/assets/' + String(path).replace(/^\/+/, '');
-};
+}
 
-// 3. Dump and Die (dd) helper
-// Safely halts the active request, rendering a styled debug dump box.
-global.dd = function(...vars) {
+/**
+ * 3. Dump and Die (dd) helper
+ * Safely halts the active request, rendering a styled debug dump box.
+ */
+function dd(...vars) {
   const store = requestContext.getStore();
   if (store && store.res) {
     const res = store.res;
@@ -79,19 +98,12 @@ global.dd = function(...vars) {
     vars.forEach(v => console.dir(v, { depth: null, colors: true }));
     process.exit(1);
   }
-};
-
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
-// 4. flash helper (sets message, or outputs Alert HTML if retrieved)
-global.flash = function(name = '', message = '', className = 'alert alert-success') {
+/**
+ * 4. flash helper (sets message, or outputs Alert HTML if retrieved)
+ */
+function flash(name = '', message = '', className = 'alert alert-success') {
   const store = requestContext.getStore();
   if (!store || !store.req) return '';
 
@@ -120,10 +132,10 @@ global.flash = function(name = '', message = '', className = 'alert alert-succes
       const icon = isError ? 'fa-exclamation-circle' : 'fa-check-circle';
 
       return `
-        <div class="${cssClass} alert-dismissible fade show shadow-sm border-0 rounded-3 mb-3" role="alert" id="msg-flash">
+        <div class="${escapeHtml(cssClass)} alert-dismissible fade show shadow-sm border-0 rounded-3 mb-3" role="alert" id="msg-flash">
             <div class="d-flex align-items-center">
                 <i class="fas ${icon} me-2"></i>
-                <div>${msg}</div>
+                <div>${escapeHtml(msg)}</div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -131,30 +143,45 @@ global.flash = function(name = '', message = '', className = 'alert alert-succes
     }
   }
   return '';
-};
+}
 
-// 5. str_random helper
-global.str_random = function(length = 16) {
+/**
+ * 5. str_random helper (cryptographically secure)
+ * @param {number} [length=16]
+ * @returns {string}
+ */
+function str_random(length = 16) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charLen = chars.length;
+  const bytes = crypto.randomBytes(length);
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars[bytes[i] % charLen];
   }
   return result;
-};
+}
 
-// 6. slugify helper
-global.slugify = function(text) {
+/**
+ * 6. slugify helper
+ * @param {string} text
+ * @returns {string}
+ */
+function slugify(text) {
   return String(text)
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '')
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '');
-};
+}
 
-// 7. formatDate helper
-global.formatDate = function(dateStr, formatPattern = 'YYYY-MM-DD') {
+/**
+ * 7. formatDate helper
+ * @param {string|Date} dateStr
+ * @param {string} [formatPattern='YYYY-MM-DD']
+ * @returns {string}
+ */
+function formatDate(dateStr, formatPattern = 'YYYY-MM-DD') {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return '';
@@ -168,22 +195,31 @@ global.formatDate = function(dateStr, formatPattern = 'YYYY-MM-DD') {
   const ss = pad(date.getSeconds());
 
   return formatPattern
-    .replace('YYYY', yyyy)
+    .replace('YYYY', String(yyyy))
     .replace('MM', mm)
     .replace('DD', dd)
     .replace('HH', hh)
     .replace('mm', min)
     .replace('ss', ss);
-};
+}
 
-// 8. formatCurrency helper
-global.formatCurrency = function(amount, currencySymbol = '৳') {
-  const val = parseFloat(amount) || 0;
+/**
+ * 8. formatCurrency helper
+ * @param {number|string} amount
+ * @param {string} [currencySymbol='৳']
+ * @returns {string}
+ */
+function formatCurrency(amount, currencySymbol = '৳') {
+  const val = parseFloat(String(amount)) || 0;
   return `${currencySymbol} ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
+}
 
-// 9. numberToWords helper (transliterating the dictionary-based English conversion)
-global.numberToWords = function(num) {
+/**
+ * 9. numberToWords helper
+ * @param {number|string} num
+ * @returns {string}
+ */
+function numberToWords(num) {
   const hyphen = '-';
   const conjunction = ' and ';
   const separator = ', ';
@@ -196,35 +232,28 @@ global.numberToWords = function(num) {
     1000000: 'Million', 1000000000: 'Billion', 1000000000000: 'Trillion'
   };
 
-  if (isNaN(num)) return '';
-  num = parseFloat(num);
-  if (num < 0) return negative + numberToWords(Math.abs(num));
+  if (isNaN(Number(num))) return '';
+  let n = parseFloat(String(num));
+  if (n < 0) return negative + numberToWords(Math.abs(n));
 
   let str = '';
-  let fraction = null;
 
-  if (String(num).includes('.')) {
-    const parts = String(num).split('.');
-    num = parseInt(parts[0]);
-    fraction = parts[1];
-  }
-
-  if (num < 21) {
-    str = dictionary[num];
-  } else if (num < 100) {
-    const tens = Math.floor(num / 10) * 10;
-    const units = num % 10;
+  if (n < 21) {
+    str = dictionary[n];
+  } else if (n < 100) {
+    const tens = Math.floor(n / 10) * 10;
+    const units = n % 10;
     str = dictionary[tens];
     if (units) str += hyphen + dictionary[units];
-  } else if (num < 1000) {
-    const hundreds = Math.floor(num / 100);
-    const remainder = num % 100;
+  } else if (n < 1000) {
+    const hundreds = Math.floor(n / 100);
+    const remainder = n % 100;
     str = dictionary[hundreds] + ' ' + dictionary[100];
     if (remainder) str += conjunction + numberToWords(remainder);
   } else {
-    const baseUnit = Math.pow(1000, Math.floor(Math.log(num) / Math.log(1000)));
-    const numBaseUnits = Math.floor(num / baseUnit);
-    const remainder = num % baseUnit;
+    const baseUnit = Math.pow(1000, Math.floor(Math.log(n) / Math.log(1000)));
+    const numBaseUnits = Math.floor(n / baseUnit);
+    const remainder = n % baseUnit;
     str = numberToWords(numBaseUnits) + ' ' + dictionary[baseUnit];
     if (remainder) {
       str += remainder < 100 ? conjunction : separator;
@@ -233,11 +262,13 @@ global.numberToWords = function(num) {
   }
 
   return str;
-};
+}
 
-// 10. Vite Dev Server status probe and viteAsset helper
+/**
+ * 10. Vite Dev Server status probe and viteAsset helper
+ */
 let viteDevServerActive = false;
-const CHECK_INTERVAL = 10000; // Probe background status every 10 seconds
+const CHECK_INTERVAL = 10000;
 
 function checkViteDevServer() {
   try {
@@ -264,19 +295,23 @@ function checkViteDevServer() {
 // Initial probe during bootup
 checkViteDevServer();
 
-// Periodically probe status in the background
-setInterval(checkViteDevServer, CHECK_INTERVAL);
+// Periodically probe status in the background (development mode only)
+if (process.env.NODE_ENV !== 'production') {
+  const timer = setInterval(checkViteDevServer, CHECK_INTERVAL);
+  if (timer.unref) {
+    timer.unref(); // Prevent timer from keeping the process alive
+  }
+}
 
-global.isViteDevActive = function() {
-  // Returns the cached in-memory flag instantly without blocking or making real-time TCP socket requests
+function isViteDevActive() {
   return viteDevServerActive;
-};
+}
 
 let manifestCache = null;
-global.viteAsset = function(path = '') {
+function viteAsset(path = '') {
   const cleanPath = String(path).replace(/^\/+/, '');
   
-  if (global.isViteDevActive()) {
+  if (isViteDevActive()) {
     return `http://localhost:5173/${cleanPath}`;
   }
   
@@ -301,35 +336,118 @@ global.viteAsset = function(path = '') {
   const mapped = manifestCache[cleanPath];
   const file = mapped ? mapped.file : cleanPath;
   return `/dist/${file}`;
-};
+}
 
 /**
-  * Quick Mail Sender Helper
-  * @param {string|string[]} to
-  * @param {string} subject
-  * @param {string} [html]
-  * @param {string} [text]
-  */
-global.sendMail = async function(to, subject, html = '', text = '') {
-  return await global.Mailer.send({ to, subject, html, text });
-};
+ * 11. Quick Mail Sender Helper
+ * @param {string|string[]} to
+ * @param {string} subject
+ * @param {string} [html]
+ * @param {string} [text]
+ */
+async function sendMail(to, subject, html = '', text = '') {
+  return await Mailer.send({ to, subject, html, text });
+}
 
 /**
-  * Quick SMS Sender Helper
-  * @param {string} to
-  * @param {string} message
-  * @param {'twilio'|'webhook'|'mock'} [provider]
-  */
-global.sendSms = async function(to, message, provider) {
-  return await global.Sms.send({ to, message, provider });
-};
+ * 12. Quick SMS Sender Helper
+ * @param {string} to
+ * @param {string} message
+ * @param {'twilio'|'webhook'|'mock'} [provider]
+ */
+async function sendSms(to, message, provider) {
+  return await Sms.send({ to, message, provider });
+}
 
 /**
-  * Multi-Channel Notification Helper
-  * @param {any} notifiable
-  * @param {import('./Notification').BaseNotification} notification
-  */
-global.notify = async function(notifiable, notification) {
-  return await global.Notification.send(notifiable, notification);
+ * 13. Multi-Channel Notification Helper
+ * @param {any} notifiable
+ * @param {import('./Notification').BaseNotification} notification
+ */
+async function notify(notifiable, notification) {
+  return await Notification.send(notifiable, notification);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unified Aero Application Container
+// Consolidates all services and helpers into an organized, enterprise namespace
+// ─────────────────────────────────────────────────────────────────────────────
+const Aero = {
+  // Core Services
+  DB,
+  Cache,
+  Logger,
+  Flash,
+  Gate,
+  ApiResource,
+  Queue,
+  Throttle,
+  Mailer,
+  Sms,
+  Notification,
+
+  // Helper Functions
+  escapeHtml,
+  e: escapeHtml,
+  env,
+  base_url,
+  url,
+  asset,
+  dd,
+  flash,
+  str_random,
+  slugify,
+  formatDate,
+  formatCurrency,
+  numberToWords,
+  isViteDevActive,
+  viteAsset,
+  sendMail,
+  sendSms,
+  notify,
+
+  /**
+   * Bind view helpers cleanly to Express app.locals
+   * (Standard Node.js best-practice: keeps template helpers isolated from Node process globals)
+   * 
+   * @param {import('express').Application} app
+   */
+  bindLocals(app) {
+    if (app && app.locals) {
+      Object.assign(app.locals, {
+        e: escapeHtml,
+        escapeHtml,
+        env,
+        base_url,
+        url,
+        asset,
+        flash,
+        formatDate,
+        formatCurrency,
+        numberToWords,
+        isViteDevActive,
+        viteAsset
+      });
+    }
+  }
 };
 
+// Bind the primary container namespace
+global.Aero = Aero;
+
+// Register non-enumerable backward-compatibility bridges on global
+// This preserves existing tests and controllers while keeping Object.keys(global) clean
+const compatKeys = Object.keys(Aero).filter(k => k !== 'bindLocals');
+compatKeys.forEach((key) => {
+  if (!(key in global)) {
+    Object.defineProperty(global, key, {
+      value: Aero[key],
+      writable: true,
+      configurable: true,
+      enumerable: false // Prevents global namespace enumeration and pollution
+    });
+  }
+});
+
+// Export unified container as standard module
+module.exports = Aero;
