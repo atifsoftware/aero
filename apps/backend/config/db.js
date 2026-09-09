@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const { Pool: PgPool } = require('pg');
 require('dotenv').config();
 
 // Resolve Logger lazily to prevent circular dependencies
@@ -17,24 +18,62 @@ function getLogger() {
 /**
  * Parse Database Configuration from environment
  * Supports both DATABASE_URL and individual DB_* variables
+ * Auto-detects database type (mysql or postgresql)
  */
 function resolveDbConfig() {
+  let dbType = 'mysql'; // default
+  
   if (process.env.DATABASE_URL) {
     try {
       const parsedUrl = new URL(process.env.DATABASE_URL);
-      return {
-        host: parsedUrl.hostname || 'localhost',
-        port: parseInt(parsedUrl.port) || 3306,
-        user: decodeURIComponent(parsedUrl.username || 'root'),
-        password: decodeURIComponent(parsedUrl.password || ''),
-        database: (parsedUrl.pathname || '').replace(/^\//, '') || 'aero_db',
-      };
+      if (parsedUrl.protocol === 'postgresql:' || parsedUrl.protocol === 'postgres:') {
+        dbType = 'postgresql';
+      }
+      
+      if (dbType === 'postgresql') {
+        return {
+          type: 'postgresql',
+          host: parsedUrl.hostname || 'localhost',
+          port: parseInt(parsedUrl.port) || 5432,
+          user: decodeURIComponent(parsedUrl.username || 'postgres'),
+          password: decodeURIComponent(parsedUrl.password || ''),
+          database: (parsedUrl.pathname || '').replace(/^\//, '') || 'aero_db',
+        };
+      } else {
+        return {
+          type: 'mysql',
+          host: parsedUrl.hostname || 'localhost',
+          port: parseInt(parsedUrl.port) || 3306,
+          user: decodeURIComponent(parsedUrl.username || 'root'),
+          password: decodeURIComponent(parsedUrl.password || ''),
+          database: (parsedUrl.pathname || '').replace(/^\//, '') || 'aero_db',
+        };
+      }
     } catch (e) {
       console.warn('[DB] Failed to parse DATABASE_URL, falling back to discrete DB_* env vars.');
     }
   }
 
+  // Check for explicit DB_TYPE or auto-detect from port
+  if (process.env.DB_TYPE) {
+    dbType = process.env.DB_TYPE.toLowerCase();
+  } else if (process.env.DB_PORT && parseInt(process.env.DB_PORT) === 5432) {
+    dbType = 'postgresql';
+  }
+
+  if (dbType === 'postgresql') {
+    return {
+      type: 'postgresql',
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT) || 5432,
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASS || '',
+      database: process.env.DB_NAME || 'aero_db',
+    };
+  }
+
   return {
+    type: 'mysql',
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
@@ -46,19 +85,46 @@ function resolveDbConfig() {
 const dbConfig = resolveDbConfig();
 const slowQueryThresholdMs = parseInt(process.env.SLOW_QUERY_THRESHOLD_MS) || 100;
 
-// Create connection pool
-const pool = mysql.createPool({
-  host: dbConfig.host,
-  port: dbConfig.port,
-  user: dbConfig.user,
-  password: dbConfig.password,
-  database: dbConfig.database,
-  waitForConnections: true,
-  connectionLimit: 15,
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0
-});
+// Create connection pool based on database type
+let pool;
+if (dbConfig.type === 'postgresql') {
+  pool = new PgPool({
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    password: dbConfig.password,
+    database: dbConfig.database,
+    max: 15,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+  
+  pool.on('error', (err) => {
+    const logger = getLogger();
+    if (logger && typeof logger.error === 'function') {
+      logger.error(`[PostgreSQL Pool Error] ${err.message}`);
+    } else {
+      console.error(`[PostgreSQL Pool Error] ${err.message}`);
+    }
+  });
+  
+  console.log(`[DB] Connected to PostgreSQL database: ${dbConfig.database}@${dbConfig.host}:${dbConfig.port}`);
+} else {
+  pool = mysql.createPool({
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    password: dbConfig.password,
+    database: dbConfig.database,
+    waitForConnections: true,
+    connectionLimit: 15,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0
+  });
+  
+  console.log(`[DB] Connected to MySQL database: ${dbConfig.database}@${dbConfig.host}:${dbConfig.port}`);
+}
 
 // Flag to track whether database auto-creation check was executed
 let dbChecked = false;
@@ -66,9 +132,16 @@ let dbChecked = false;
 /**
  * Ensure database exists on the target MySQL server.
  * Automatically runs CREATE DATABASE IF NOT EXISTS if needed.
+ * Note: PostgreSQL doesn't support this syntax, so skip for PG
  */
 async function ensureDatabaseExists() {
   if (dbChecked) return;
+  
+  if (dbConfig.type === 'postgresql') {
+    dbChecked = true;
+    return; // PostgreSQL databases must be created manually
+  }
+  
   try {
     const rawConnection = await mysql.createConnection({
       host: dbConfig.host,
@@ -107,6 +180,7 @@ function auditQueryPerformance(sql, params, durationMs) {
 
 /**
  * Fluent Query Builder Class for Aero
+ * Supports both MySQL and PostgreSQL
  */
 class QueryBuilder {
   constructor(table, connection = null) {
@@ -121,6 +195,7 @@ class QueryBuilder {
     this._groupBy = null;
     this._having = null;
     this._havingBindings = [];
+    this._dbType = dbConfig.type; // Store database type
   }
 
   select(fields, ...more) {
@@ -138,12 +213,23 @@ class QueryBuilder {
     if (tableName.toLowerCase().includes(' as ')) {
       const parts = tableName.split(/ as /i);
       tableName = parts[0].trim();
-      alias = ` AS \`${parts[1].trim()}\``;
+      alias = ` AS ${this._escapeIdentifier(parts[1].trim())}`;
     }
     const escTable = tableName.includes('.') 
-      ? tableName.split('.').map(t => `\`${t}\``).join('.') 
-      : `\`${tableName}\``;
+      ? tableName.split('.').map(t => this._escapeIdentifier(t)).join('.') 
+      : this._escapeIdentifier(tableName);
     return `${escTable}${alias}`;
+  }
+
+  /**
+   * Escape identifier based on database type
+   * MySQL uses backticks (`), PostgreSQL uses double quotes (")
+   */
+  _escapeIdentifier(identifier) {
+    if (this._dbType === 'postgresql') {
+      return `"${identifier}"`;
+    }
+    return `\`${identifier}\``;
   }
 
   _addWhere(boolean, sql, bindings = []) {
@@ -167,7 +253,7 @@ class QueryBuilder {
       operator = '=';
     }
 
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('AND', `${colName} ${operator} ?`, [value]);
     return this;
   }
@@ -188,7 +274,7 @@ class QueryBuilder {
       operator = '=';
     }
 
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('OR', `${colName} ${operator} ?`, [value]);
     return this;
   }
@@ -196,7 +282,7 @@ class QueryBuilder {
   whereIn(column, values) {
     if (!Array.isArray(values) || values.length === 0) return this;
     const placeholders = values.map(() => '?').join(', ');
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('AND', `${colName} IN (${placeholders})`, values);
     return this;
   }
@@ -204,33 +290,33 @@ class QueryBuilder {
   whereNotIn(column, values) {
     if (!Array.isArray(values) || values.length === 0) return this;
     const placeholders = values.map(() => '?').join(', ');
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('AND', `${colName} NOT IN (${placeholders})`, values);
     return this;
   }
 
   whereNull(column) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('AND', `${colName} IS NULL`, []);
     return this;
   }
 
   whereNotNull(column) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('AND', `${colName} IS NOT NULL`, []);
     return this;
   }
 
   whereBetween(column, range) {
     if (!Array.isArray(range) || range.length !== 2) return this;
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('AND', `${colName} BETWEEN ? AND ?`, range);
     return this;
   }
 
   whereNotBetween(column, range) {
     if (!Array.isArray(range) || range.length !== 2) return this;
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._addWhere('AND', `${colName} NOT BETWEEN ? AND ?`, range);
     return this;
   }
@@ -258,8 +344,8 @@ class QueryBuilder {
     if (operator === undefined && second === undefined) {
       this._joins.push(`${type} JOIN ${escTable} ON ${first}`);
     } else {
-      const escFirst = first.includes('.') ? first.split('.').map(c => `\`${c}\``).join('.') : `\`${first}\``;
-      const escSecond = second.includes('.') ? second.split('.').map(c => `\`${c}\``).join('.') : `\`${second}\``;
+      const escFirst = first.includes(".") ? first.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(first);
+      const escSecond = second.includes(".") ? second.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(second);
       this._joins.push(`${type} JOIN ${escTable} ON ${escFirst} ${operator} ${escSecond}`);
     }
     return this;
@@ -274,7 +360,7 @@ class QueryBuilder {
   }
 
   groupBy(column) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._groupBy = `GROUP BY ${colName}`;
     return this;
   }
@@ -284,14 +370,14 @@ class QueryBuilder {
       value = operator;
       operator = '=';
     }
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._having = `HAVING ${colName} ${operator} ?`;
     this._havingBindings = [value];
     return this;
   }
 
   orderBy(column, direction = 'ASC') {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     this._orders.push(`${colName} ${direction.toUpperCase()}`);
     return this;
   }
@@ -394,10 +480,24 @@ class QueryBuilder {
     const executor = this._connection || pool;
     const start = Date.now();
     try {
-      const [rows] = await executor.query(sql, bindings);
+      let result;
+      
+      if (this._dbType === 'postgresql') {
+        // PostgreSQL query format
+        const pgQuery = sql.replace(/\?/g, () => `$${bindings.length > 0 ? bindings.indexOf(bindings[bindings.length - 1]) + 1 : 1}`);
+        let paramIndex = 0;
+        const formattedSql = sql.replace(/\?/g, () => `$${++paramIndex}`);
+        const pgResult = await executor.query(formattedSql, bindings);
+        result = pgResult.rows;
+      } else {
+        // MySQL query format
+        const [rows] = await executor.query(sql, bindings);
+        result = rows;
+      }
+      
       const duration = Date.now() - start;
       auditQueryPerformance(sql, bindings, duration);
-      return rows;
+      return result;
     } catch (err) {
       const duration = Date.now() - start;
       auditQueryPerformance(sql, bindings, duration);
@@ -508,14 +608,24 @@ class QueryBuilder {
 
   async insert(data) {
     const keys = Object.keys(data);
-    const escapedKeys = keys.map(k => `\`${k}\``).join(', ');
-    const placeholders = keys.map(() => '?').join(', ');
-    const sql = `INSERT INTO \`${this._table}\` (${escapedKeys}) VALUES (${placeholders})`;
+    const escapedKeys = keys.map(k => this._escapeIdentifier(k)).join(', ');
+    const placeholders = keys.map((_, i) => this._dbType === 'postgresql' ? `${i + 1}` : '?').join(', ');
+    const tableEscaped = this._escapeIdentifier(this._table);
+    const sql = `INSERT INTO ${tableEscaped} (${escapedKeys}) VALUES (${placeholders})`;
     const values = Object.values(data);
 
     const executor = this._connection || pool;
     const start = Date.now();
-    const [result] = await executor.query(sql, values);
+    
+    let result;
+    if (this._dbType === 'postgresql') {
+      const pgResult = await executor.query(sql, values);
+      result = { insertId: pgResult.rows[0]?.id };
+    } else {
+      const [mysqlResult] = await executor.query(sql, values);
+      result = mysqlResult;
+    }
+    
     auditQueryPerformance(sql, values, Date.now() - start);
     return result.insertId;
   }
@@ -571,7 +681,7 @@ class QueryBuilder {
   }
 
   async sum(column) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     const escTable = this._parseTableName(this._table);
     let sql = `SELECT SUM(${colName}) AS aggregate FROM ${escTable}`;
 
@@ -589,7 +699,7 @@ class QueryBuilder {
   }
 
   async avg(column) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     const escTable = this._parseTableName(this._table);
     let sql = `SELECT AVG(${colName}) AS aggregate FROM ${escTable}`;
 
@@ -607,7 +717,7 @@ class QueryBuilder {
   }
 
   async min(column) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     const escTable = this._parseTableName(this._table);
     let sql = `SELECT MIN(${colName}) AS aggregate FROM ${escTable}`;
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
@@ -617,7 +727,7 @@ class QueryBuilder {
   }
 
   async max(column) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     const escTable = this._parseTableName(this._table);
     let sql = `SELECT MAX(${colName}) AS aggregate FROM ${escTable}`;
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
@@ -627,7 +737,7 @@ class QueryBuilder {
   }
 
   async increment(column, amount = 1) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     let sql = `UPDATE \`${this._table}\` SET ${colName} = ${colName} + ?`;
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
     if (whereSql) sql += ` WHERE ${whereSql}`;
@@ -640,7 +750,7 @@ class QueryBuilder {
   }
 
   async decrement(column, amount = 1) {
-    const colName = column.includes('.') ? column.split('.').map(c => `\`${c}\``).join('.') : `\`${column}\``;
+    const colName = column.includes(".") ? column.split(".").map(c => this._escapeIdentifier(c)).join(".") : this._escapeIdentifier(column);
     let sql = `UPDATE \`${this._table}\` SET ${colName} = ${colName} - ?`;
     const { sql: whereSql, bindings: whereBindings } = this._compileWheres();
     if (whereSql) sql += ` WHERE ${whereSql}`;
