@@ -106,8 +106,27 @@ class Model {
   }
 
   /**
+   * Add a global query scope to this model class (Multi-branch / Multi-tenant isolation)
+   * @param {string} name Unique scope identifier (e.g. 'branch', 'tenant')
+   * @param {Function} scopeFn Function receiving (queryBuilder)
+   */
+  static addGlobalScope(name, scopeFn) {
+    if (!this.hasOwnProperty('_scopes')) {
+      this._scopes = new Map();
+    }
+    this._scopes.set(name, scopeFn);
+  }
+
+  /**
+   * Get all registered global scopes for this model class
+   */
+  static getGlobalScopes() {
+    return this._scopes || new Map();
+  }
+
+  /**
    * Start a new QueryBuilder scoped to this model's table
-   * Overridden to handle eager loading and soft deletes
+   * Overridden to handle eager loading, soft deletes, global scopes, and locking
    */
   static query() {
     const qb = DB.table(this.getTable());
@@ -116,6 +135,8 @@ class Model {
     qb._eagerLoads = [];
     qb._withTrashed = false;
     qb._onlyTrashed = false;
+    qb._disabledScopes = new Set();
+    qb._disabledAllScopes = false;
 
     // Chainable Query hooks
     qb.with = (...relations) => {
@@ -133,15 +154,32 @@ class Model {
       return qb;
     };
 
+    qb.withoutGlobalScope = (name) => {
+      qb._disabledScopes.add(name);
+      return qb;
+    };
+
+    qb.withoutGlobalScopes = () => {
+      qb._disabledAllScopes = true;
+      return qb;
+    };
+
     // Keep references to original execution methods
     const originalGet = qb.get.bind(qb);
     const originalFirst = qb.first.bind(qb);
     const originalCount = qb.count.bind(qb);
+    const originalToSql = qb.toSql.bind(qb);
+    const originalToRawSql = qb.toRawSql.bind(qb);
 
     const modelClass = this;
+    let criteriaApplied = false;
 
     // Internal criteria applicator
     const applyCriteria = () => {
+      if (criteriaApplied) return;
+      criteriaApplied = true;
+
+      // 1. Soft Deletes
       if (modelClass.softDeletes) {
         if (qb._onlyTrashed) {
           qb.whereNotNull('deleted_at');
@@ -149,6 +187,26 @@ class Model {
           qb.whereNull('deleted_at');
         }
       }
+
+      // 2. Global Scopes (Multi-Branch / Multi-Store Isolation)
+      if (!qb._disabledAllScopes && typeof modelClass.getGlobalScopes === 'function') {
+        const scopes = modelClass.getGlobalScopes();
+        for (const [scopeName, scopeFn] of scopes.entries()) {
+          if (!qb._disabledScopes.has(scopeName)) {
+            scopeFn(qb);
+          }
+        }
+      }
+    };
+
+    qb.toSql = () => {
+      applyCriteria();
+      return originalToSql();
+    };
+
+    qb.toRawSql = () => {
+      applyCriteria();
+      return originalToRawSql();
     };
 
     // Override get

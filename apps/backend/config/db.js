@@ -200,6 +200,24 @@ class QueryBuilder {
     this._allowMassDelete = false;
     this._allowMassUpdate = false;
     this._dbType = dbConfig.type;
+    this._lock = null;
+  }
+
+  /**
+   * Lock the selected rows for an update (Pessimistic Locking)
+   * Essential for inventory deduction and concurrent financial mutations in ERP
+   */
+  forUpdate() {
+    this._lock = 'FOR UPDATE';
+    return this;
+  }
+
+  /**
+   * Shared lock for read operations preventing other transactions from modifying
+   */
+  sharedLock() {
+    this._lock = this._dbType === 'postgresql' ? 'FOR SHARE' : 'LOCK IN SHARE MODE';
+    return this;
   }
 
   /**
@@ -513,6 +531,10 @@ class QueryBuilder {
 
     if (this._offset !== null) {
       sql += ` OFFSET ${this._offset}`;
+    }
+
+    if (this._lock) {
+      sql += ` ${this._lock}`;
     }
 
     return sql;
@@ -952,54 +974,89 @@ const DB = {
     await connection.beginTransaction();
     return connection;
   },
-  transaction: async (callback) => {
-    const isPg = dbConfig.type === 'postgresql';
-    const connection = await (isPg ? pool.connect() : pool.getConnection());
-    try {
-      if (isPg) {
-        await connection.query('BEGIN');
-      } else {
-        await connection.beginTransaction();
-      }
+  /**
+   * Execute transaction with automatic deadlock and lock wait retry handling
+   * @param {Function} callback Callback receiving transactionDB
+   * @param {Object|number} [options] maxRetries count or config object { maxRetries, backoffMs }
+   */
+  transaction: async (callback, options = {}) => {
+    const maxRetries = typeof options === 'number' ? options : (options.maxRetries || 3);
+    const backoffMs = (typeof options === 'object' && options.backoffMs) || 50;
 
-      const transactionDB = {
-        pool: connection,
-        query: async (sql, params = []) => {
-          const start = Date.now();
-          let res;
-          if (isPg) {
-            let paramIndex = 0;
-            const formattedSql = sql.replace(/\?/g, () => `$${++paramIndex}`);
-            const pgRes = await connection.query(formattedSql, params);
-            res = pgRes.rows;
-          } else {
-            const mysqlRes = await connection.query(sql, params);
-            res = Array.isArray(mysqlRes) ? mysqlRes[0] : mysqlRes;
-          }
-          auditQueryPerformance(sql, params, Date.now() - start);
-          return res;
-        },
-        table: (name) => {
-          return new QueryBuilder(name, connection);
+    let attempt = 0;
+    while (true) {
+      attempt++;
+      const isPg = dbConfig.type === 'postgresql';
+      const connection = await (isPg ? pool.connect() : pool.getConnection());
+      try {
+        if (isPg) {
+          await connection.query('BEGIN');
+        } else {
+          await connection.beginTransaction();
         }
-      };
 
-      const result = await callback(transactionDB);
-      if (isPg) {
-        await connection.query('COMMIT');
-      } else {
-        await connection.commit();
+        const transactionDB = {
+          pool: connection,
+          query: async (sql, params = []) => {
+            const start = Date.now();
+            let res;
+            if (isPg) {
+              let paramIndex = 0;
+              const formattedSql = sql.replace(/\?/g, () => `$${++paramIndex}`);
+              const pgRes = await connection.query(formattedSql, params);
+              res = pgRes.rows;
+            } else {
+              const mysqlRes = await connection.query(sql, params);
+              res = Array.isArray(mysqlRes) ? mysqlRes[0] : mysqlRes;
+            }
+            auditQueryPerformance(sql, params, Date.now() - start);
+            return res;
+          },
+          table: (name) => {
+            return new QueryBuilder(name, connection);
+          }
+        };
+
+        const result = await callback(transactionDB);
+        if (isPg) {
+          await connection.query('COMMIT');
+        } else {
+          await connection.commit();
+        }
+        return result;
+      } catch (err) {
+        if (isPg) {
+          await connection.query('ROLLBACK').catch(() => {});
+        } else {
+          await connection.rollback().catch(() => {});
+        }
+
+        // Detect deadlock or lock wait timeout in MySQL or PostgreSQL
+        const isDeadlock = 
+          err.code === 'ER_LOCK_DEADLOCK' || 
+          err.errno === 1213 || 
+          err.code === 'ER_LOCK_WAIT_TIMEOUT' || 
+          err.errno === 1205 ||
+          err.code === '40P01' || 
+          err.code === '55P03';
+
+        if (isDeadlock && attempt < maxRetries) {
+          const delay = backoffMs * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 25);
+          const logger = getLogger();
+          const logMsg = `[DB Transaction] Deadlock detected (${err.code || err.errno}). Auto-retrying attempt ${attempt}/${maxRetries} in ${delay}ms...`;
+          if (logger && typeof logger.warning === 'function') {
+            logger.warning(logMsg);
+          } else {
+            console.warn(`\x1b[33m${logMsg}\x1b[0m`);
+          }
+          await new Promise(res => setTimeout(res, delay));
+          continue;
+        }
+
+        throw err;
+      } finally {
+        connection.release();
       }
-      return result;
-    } catch (err) {
-      if (isPg) {
-        await connection.query('ROLLBACK');
-      } else {
-        await connection.rollback();
-      }
-      throw err;
-    } finally {
-      connection.release();
     }
   }
 };

@@ -54,6 +54,8 @@ function showMenu() {
   console.log("19. " + colors.cyan + "Launch Prisma Studio Web GUI (prisma:studio)" + colors.reset);
   console.log("20. " + colors.cyan + "Regenerate Prisma Client (prisma:generate)" + colors.reset);
   console.log("21. " + colors.cyan + "Push Prisma Schema to Database (prisma:db:push)" + colors.reset);
+  console.log("22. " + colors.cyan + "Run Due Scheduled Tasks (schedule:run)" + colors.reset);
+  console.log("23. " + colors.cyan + "List Scheduled Tasks (schedule:list)" + colors.reset);
   console.log("0. " + colors.red + "Exit" + colors.reset);
   console.log("");
   
@@ -126,6 +128,14 @@ async function handleChoice(choice) {
       break;
     case '21':
       await pushPrismaSchema();
+      break;
+    case '22':
+    case 'schedule:run':
+      await runScheduler();
+      break;
+    case '23':
+    case 'schedule:list':
+      listScheduledTasks();
       break;
     case '0':
       console.log(colors.green + "\n✓ Goodbye From Aero MVC!\n" + colors.reset);
@@ -878,6 +888,29 @@ async function pushPrismaSchema() {
   } catch (error) {
     console.log(colors.red + "✗ DB push failed: " + error.message + colors.reset);
   }
+  pause();
+}
+
+async function runScheduler() {
+  console.log(colors.cyan + "\n⏰ Running Due Scheduled Tasks..." + colors.reset);
+  const Scheduler = require('./core/Scheduler');
+  const results = await Scheduler.runDue();
+  console.log(colors.green + `✓ Scheduler finished. ${results.ran} task(s) ran.\n` + colors.reset);
+  pause();
+}
+
+function listScheduledTasks() {
+  console.log(colors.cyan + "\n📋 Registered Scheduled Tasks\n" + colors.reset);
+  const Scheduler = require('./core/Scheduler');
+  const tasks = Scheduler.getTasks();
+  if (tasks.length === 0) {
+    console.log(colors.yellow + "No scheduled tasks registered. (Use Scheduler.call or Scheduler.command to register tasks)." + colors.reset);
+  } else {
+    tasks.forEach(t => {
+      console.log(`- ${colors.bold}${t.name}${colors.reset} [Cron: ${colors.magenta}${t._cronExpression}${colors.reset}]`);
+    });
+  }
+  console.log("");
   pause();
 }
 
