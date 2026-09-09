@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "@aero/shared": "*",
-    "expo": "~51.0.0",
+    "expo": "^57.0.21",
     "expo-status-bar": "~1.12.1",
+    "next": "16.3.4",
     "react": "^18.3.1",
-    "react-native": "0.74.5"
+    "react-native": "^0.86.3",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
