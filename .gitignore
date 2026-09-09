@@ -1,12 +1,13 @@
 # Dependency directories
 node_modules/
-client/node_modules/
+**/node_modules/
 jspm_packages/
 
 # Debug & system logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 storage/logs/*
 !storage/logs/.gitkeep
 apps/**/storage/logs/*
@@ -14,8 +15,11 @@ apps/**/storage/logs/*
 
 # Environment files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
 
 # Build artifacts
 dist/
@@ -65,3 +69,4 @@ tmp/
 .DS_Store
 Thumbs.db
 NodeFlow-React.code-workspace
+Aero-MVC.code-workspace
